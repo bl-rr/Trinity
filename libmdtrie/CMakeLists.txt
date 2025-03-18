@@ -1,4 +1,9 @@
+project("mdtrie")
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+add_compile_options("-g")
+add_compile_options("-mbmi2")
 
 add_library(mdtrie INTERFACE)
 target_include_directories(mdtrie INTERFACE src/)

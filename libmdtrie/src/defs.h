@@ -17,6 +17,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <map>
 
 typedef uint64_t preorder_t;
 typedef uint64_t n_leaves_t;
