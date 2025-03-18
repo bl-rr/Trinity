@@ -8,16 +8,16 @@
 #include <compressed_bitmap.h>
 #include <mutex>
 #include <shared_mutex>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include <fcntl.h>
+#include <map>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <map>
 
 typedef uint64_t preorder_t;
 typedef uint64_t n_leaves_t;
@@ -29,11 +29,9 @@ typedef uint64_t point_t;
 
 const preorder_t null_node = -1;
 
-template <dimension_t DIMENSION>
-class tree_block;
+template <dimension_t DIMENSION> class tree_block;
 
-template <dimension_t DIMENSION>
-class data_point;
+template <dimension_t DIMENSION> class data_point;
 
 /**
  * node_info and subtree info are used when splitting the treeblock to create a
@@ -42,34 +40,28 @@ class data_point;
  * subtree size of that node
  */
 
-struct node_info
-{
-  preorder_t preorder_ = 0;
-  preorder_t n_children_ = 0;
+struct node_info {
+    preorder_t preorder_ = 0;
+    preorder_t n_children_ = 0;
 };
 
-struct subtree_info
-{
-  preorder_t preorder_ = 0;
-  preorder_t subtree_size_ = 0;
+struct subtree_info {
+    preorder_t preorder_ = 0;
+    preorder_t subtree_size_ = 0;
 };
 
-template <dimension_t DIMENSION>
-struct frontier_node
-{
-  preorder_t preorder_;
-  tree_block<DIMENSION> *pointer_;
+template <dimension_t DIMENSION> struct frontier_node {
+    preorder_t preorder_;
+    tree_block<DIMENSION> *pointer_;
 };
 
 typedef unsigned long long int TimeStamp;
 
-TimeStamp
-GetTimestamp()
-{
-  struct timeval now;
-  gettimeofday(&now, nullptr);
+TimeStamp GetTimestamp() {
+    struct timeval now;
+    gettimeofday(&now, nullptr);
 
-  return now.tv_usec + (TimeStamp)now.tv_sec * 1000000;
+    return now.tv_usec + (TimeStamp)now.tv_sec * 1000000;
 }
 
 /**
@@ -121,25 +113,22 @@ bool is_collapsed_node_exp = false;
 
 void create_level_to_num_children(std::vector<level_t> bit_widths,
                                   std::vector<level_t> start_bits,
-                                  level_t max_level)
-{
+                                  level_t max_level) {
 
-  dimension_to_num_bits = bit_widths;
-  start_dimension_bits = start_bits;
-  dimension_t num_dimensions = bit_widths.size();
+    dimension_to_num_bits = bit_widths;
+    start_dimension_bits = start_bits;
+    dimension_t num_dimensions = bit_widths.size();
 
-  for (level_t level = 0; level < max_level; level++)
-  {
+    for (level_t level = 0; level < max_level; level++) {
 
-    dimension_t dimension_left = num_dimensions;
-    for (dimension_t j = 0; j < num_dimensions; j++)
-    {
+        dimension_t dimension_left = num_dimensions;
+        for (dimension_t j = 0; j < num_dimensions; j++) {
 
-      if (level + 1 > bit_widths[j] || level < start_dimension_bits[j])
-        dimension_left--;
+            if (level + 1 > bit_widths[j] || level < start_dimension_bits[j])
+                dimension_left--;
+        }
+        level_to_num_children[level] = dimension_left;
     }
-    level_to_num_children[level] = dimension_left;
-  }
 }
 
 // #define USE_LINEAR_SCAN // Possibly disable at microbenchmark
