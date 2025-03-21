@@ -20,7 +20,7 @@ int random_int(int min, int max) {
 int main() {
     dimension_t num_dimensions = 9;
     max_tree_node = 512;
-    int total_count = 100000;
+    int total_count = 10000;
     trie_depth = 6;
     max_depth = 32;
     no_dynamic_sizing = true;
@@ -35,6 +35,8 @@ int main() {
     /* ----------- INSERT ----------- */
     TimeStamp start = 0, cumulative = 0;
     int num_inserted = 0;
+    vector<data_point<9>> points;
+    points.reserve(total_count);
 
     for (int primary_key = 0; primary_key < total_count; primary_key++) {
         num_inserted++;
@@ -52,6 +54,7 @@ int main() {
         mdtrie.insert_trie(&point, primary_key,
                            &primary_key_to_treeblock_mapping);
         cumulative += GetTimestamp() - start;
+        points.push_back(std::move(point));
     }
     std::cout << "Insertion Latency per point: "
               << (float)cumulative / total_count << " us" << std::endl;
@@ -113,5 +116,28 @@ int main() {
     }
     std::cout << "Per-query Latency: " << (cumulative / 1000.0) / num_queries
               << " ms" << std::endl;
+
+    // Range Query Correctness
+    for (int i = 0; i < total_count; i++) {
+        std::vector<int> found_points;
+
+        data_point<9> start_range = points[i];
+        data_point<9> end_range = points[i];
+
+        mdtrie.range_search_trie(&start_range, &end_range, mdtrie.root(), 0,
+                                 found_points);
+        // Coordinates are flattened into one vector.
+        if ((int)(found_points.size() / num_dimensions) != 1) {
+            std::cerr << "Wrong number of points found!" << std::endl;
+            std::cerr << "found: "
+                      << (int)(found_points.size() / num_dimensions)
+                      << std::endl;
+            std::cerr << "total count: " << 1 << std::endl;
+        } else {
+            std::cout << "Query - " << i << ", found: "
+                      << (int)(found_points.size() / num_dimensions)
+                      << ", expected: " << 1 << std::endl;
+        }
+    }
     return 0;
 }
