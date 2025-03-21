@@ -192,6 +192,7 @@ class compressed_bitmap {
         }
     }
 
+    // count the number of set bits in a range, starting from pos with width
     inline uint64_t popcount(pos_type pos, width_type width, bool is_on_data) {
 
         if (width <= 64) {
@@ -318,6 +319,7 @@ class compressed_bitmap {
         }
     }
 
+    // copy from beginning to end (to lower index), so that we don't overwrite
     inline void bulkcopy_forward(pos_type from, pos_type destination,
                                  width_type bits, bool is_on_data) {
         while (bits > 64) {
@@ -331,6 +333,7 @@ class compressed_bitmap {
                   is_on_data);
     }
 
+    // copy from end to beginning (to higher index), so that we don't overwrite
     inline void bulkcopy_backward(pos_type from, pos_type destination,
                                   width_type bits, bool is_on_data) {
         while (bits > 64) {
@@ -344,6 +347,7 @@ class compressed_bitmap {
                   bits, is_on_data);
     }
 
+    // shift some data back and create gap
     inline void shift_backward(preorder_t node, pos_type node_pos,
                                width_type data_bits, width_type flag_bits) {
 
@@ -362,6 +366,7 @@ class compressed_bitmap {
         ClearWidth(node, flag_bits, false);
     }
 
+    // shift data to higher index, create space to uncollapse the node
     inline void shift_backward_to_uncollapse(preorder_t from_node,
                                              pos_type from_node_pos,
                                              width_type num_children) {
@@ -384,6 +389,7 @@ class compressed_bitmap {
         SETBITVAL(flag_, from_node);
     }
 
+    // shift some data forward and close gap
     inline void shift_forward(preorder_t from_node, pos_type from_node_pos,
                               preorder_t to_node, pos_type to_node_pos)
 
@@ -395,6 +401,10 @@ class compressed_bitmap {
         ClearWidth(data_size_ - shifted_amount, shifted_amount, true);
         ClearWidth(flag_size_ - (from_node - to_node), (from_node - to_node),
                    false);
+
+        // now decrease the allocated bits to match the new logical size
+        // decrease_bits(shifted_amount, true);
+        // decrease_bits((from_node - to_node), false);
     }
 
     inline bool is_collapse(preorder_t node) {
@@ -404,6 +414,7 @@ class compressed_bitmap {
         return !GETBITVAL(flag_, node);
     }
 
+    // check if the current bitmap has a symbol
     inline bool has_symbol(preorder_t node, pos_type node_pos, morton_t symbol,
                            width_type num_children) {
 
@@ -418,6 +429,7 @@ class compressed_bitmap {
         }
     }
 
+    // get number of children of current node
     inline preorder_t get_num_children(preorder_t node, pos_type node_pos,
                                        width_type num_children) {
         if (is_collapse(node)) {
@@ -427,6 +439,7 @@ class compressed_bitmap {
         }
     }
 
+    // get position for this child
     inline preorder_t get_child_skip(preorder_t node, pos_type node_pos,
                                      morton_t symbol, width_type num_children) {
         if (is_collapse(node)) {
@@ -439,10 +452,12 @@ class compressed_bitmap {
         }
     }
 
+    // get the k-th set bit in a 64-bit word
     unsigned nthset(uint64_t x, unsigned n) {
         return __builtin_ctzll(_pdep_u64(1ULL << n, x));
     }
 
+    // get the k-th set bit in a es range
     morton_t get_k_th_set_bit(preorder_t node, unsigned k /* 0-indexed */,
                               pos_type node_pos, width_type num_children) {
 
@@ -594,7 +609,11 @@ class compressed_bitmap {
 
   protected:
     // Data members
+
+    // storing data: collapased + uncollapsed nodes
     data_type *data_;
+
+    // storing flags: which nodes are collapsed
     data_type *flag_;
     size_type data_size_;
     size_type flag_size_;

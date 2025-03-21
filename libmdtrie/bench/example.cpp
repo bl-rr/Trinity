@@ -11,8 +11,8 @@
 
 // Function to generate a random integer in the range [min, max]
 int random_int(int min, int max) {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
+    // static std::random_device rd;
+    static std::mt19937 gen(1);
     std::uniform_int_distribution<> distrib(min, max);
     return distrib(gen);
 }
