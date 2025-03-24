@@ -69,6 +69,9 @@ template <dimension_t DIMENSION> class trie_node {
     void *trie_or_treeblock_ptr_ = NULL;
     trie_node<DIMENSION> *parent_trie_node_ = NULL;
     morton_t parent_symbol_ = 0;
+
+    // Grant md_trie access to private members.
+    template <dimension_t> friend class md_trie;
 };
 
 #endif // MD_TRIE_TRIE_NODE_H

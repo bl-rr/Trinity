@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
     /* ---------- WARM UP ------------ */
 
     // querying the entire range for 1000 times
-    for (int c = 0; c < 1000; c++) {
+    for (int c = 0; c < 0; c++) {
         data_point<NUM_DIMENSIONS> start_range;
         data_point<NUM_DIMENSIONS> end_range;
         std::vector<int32_t> found_points;
@@ -239,5 +239,6 @@ int main(int argc, char *argv[]) {
               << " ns" << std::endl;
 
     std::cout << "[Finished benchmark...]" << std::endl;
+
     return 0;
 }

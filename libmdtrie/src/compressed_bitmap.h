@@ -139,6 +139,18 @@ class compressed_bitmap {
         SETBITVAL(flag_, 0);
     }
 
+    ~compressed_bitmap() {
+        if (data_size_ > 0) {
+            free(data_);
+            data_ = nullptr;
+        }
+
+        if (flag_size_ > 0) {
+            free(flag_);
+            flag_ = nullptr;
+        }
+    }
+
     inline uint64_t size() const {
 
         uint64_t total_size = 0;

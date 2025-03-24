@@ -31,6 +31,9 @@ template <dimension_t DIMENSION> class md_trie {
         root_ = new trie_node<DIMENSION>(false, level_to_num_children[0]);
     }
 
+    // The md_trie destructor calls our recursive cleanup helper.
+    ~md_trie() { free_node(root_, 0); }
+
     inline trie_node<DIMENSION> *root() { return root_; }
 
     tree_block<DIMENSION> *walk_trie(trie_node<DIMENSION> *current_trie_node,
@@ -219,6 +222,34 @@ template <dimension_t DIMENSION> class md_trie {
     trie_node<DIMENSION> *root_ = nullptr;
     level_t max_depth_;
     preorder_t max_tree_nodes_;
+
+    // Helper function to recursively free a node.
+    void free_node(trie_node<DIMENSION> *node, level_t level) {
+        if (node == nullptr)
+            return;
+
+        if (level < trie_depth_) {
+            // Internal node: the pointer stores an array of child pointers.
+            trie_node<DIMENSION> **children =
+                reinterpret_cast<trie_node<DIMENSION> **>(
+                    node->trie_or_treeblock_ptr_);
+            dimension_t num_children =
+                1 << level_to_num_children[level]; // Known from your allocation
+            for (dimension_t i = 0; i < num_children; i++) {
+                free_node(children[i], level + 1);
+            }
+            // Free the children array allocated with calloc.
+            free(node->trie_or_treeblock_ptr_);
+        } else {
+            // Leaf node: the pointer stores a tree_block allocated via new.
+            tree_block<DIMENSION> *block =
+                reinterpret_cast<tree_block<DIMENSION> *>(
+                    node->trie_or_treeblock_ptr_);
+            delete block;
+        }
+        // Finally, delete the node itself.
+        delete node;
+    }
 };
 
 #endif // MD_TRIE_MD_TRIE_H

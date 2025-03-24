@@ -152,7 +152,13 @@ class Bitmap {
 
     void Realloc_increase(size_type num_bits) { Resize(size_ + num_bits); }
 
-    virtual ~Bitmap() = default;
+    ~Bitmap() {
+        if (data_ != nullptr) {
+            free(data_);
+            data_ = nullptr;
+        }
+        size_ = 0;
+    };
 
     size_type GetSizeInBits() { return size_; }
 

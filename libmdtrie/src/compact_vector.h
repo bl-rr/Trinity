@@ -301,7 +301,7 @@ template <typename T, uint8_t W> class CompactVector : public BitVector {
     explicit CompactVector(size_type num_elements)
         : BitVector(num_elements * W) {}
 
-    ~CompactVector() override = default;
+    ~CompactVector() { Destroy(); }
 
     CompactVector(T *elements, size_type num_elements)
         : CompactVector(num_elements) {

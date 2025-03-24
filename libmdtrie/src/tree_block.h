@@ -6,6 +6,7 @@
 #include "point_array.h"
 #include "trie_node.h"
 #include <cmath>
+#include <cstdlib>
 #include <sys/time.h>
 
 template <dimension_t DIMENSION> class tree_block {
@@ -29,6 +30,24 @@ template <dimension_t DIMENSION> class tree_block {
             dfuds_ = dfuds;
         if (parent_trie_node) {
             parent_combined_ptr_ = parent_trie_node;
+        }
+    }
+
+    ~tree_block() {
+        // Delete the compressed_bitmap if it was allocated.
+        if (dfuds_ != nullptr) {
+            delete dfuds_;
+            dfuds_ = nullptr;
+        }
+        // Free the frontiers array if allocated.
+        if (frontiers_ != nullptr) {
+            for (preorder_t i = 0; i < num_frontiers_; i++) {
+                if (frontiers_[i].pointer_ != nullptr) {
+                    delete frontiers_[i].pointer_;
+                    frontiers_[i].pointer_ = nullptr;
+                }
+            }
+            free(frontiers_);
         }
     }
 

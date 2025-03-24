@@ -10,22 +10,23 @@
 
 namespace bitmap {
 
-template <typename T, uint32_t sampling_rate = 32> class DeltaEncodedArray {
+template <typename Derived, typename T, uint32_t sampling_rate = 32>
+class DeltaEncodedArray {
   public:
     typedef size_t size_type;
     typedef size_t pos_type;
     typedef uint8_t width_type;
 
     DeltaEncodedArray() = default;
-    virtual ~DeltaEncodedArray() = default;
+    // virtual ~DeltaEncodedArray() = default;
 
   protected:
     // Get the encoding size for an delta value
-    virtual width_type EncodingSize(T delta) = 0;
+    // virtual width_type EncodingSize(T delta) = 0;
 
     // Encode the delta values
-    virtual void EncodeDeltas(std::vector<T> &deltas, size_type num_deltas) = 0;
-    virtual void EncodeLastDelta(T delta, pos_type pos) = 0;
+    // virtual void EncodeDeltas(std::vector<T> &deltas, size_type num_deltas) =
+    // 0; virtual void EncodeLastDelta(T delta, pos_type pos) = 0;
 
     // Encode the delta encoded array
     void Encode(std::vector<T> &elements, size_type num_elements) {
@@ -47,7 +48,8 @@ template <typename T, uint32_t sampling_rate = 32> class DeltaEncodedArray {
 
                 T delta = elements[i] - last_val;
                 deltas.push_back(delta);
-                cum_delta_size += EncodingSize(delta);
+                cum_delta_size +=
+                    static_cast<Derived *>(this)->EncodingSize(delta);
             }
             last_val = elements[i];
         }
@@ -61,7 +63,7 @@ template <typename T, uint32_t sampling_rate = 32> class DeltaEncodedArray {
         if (cum_delta_size != 0) {
 
             deltas_.Bitmap_Init(cum_delta_size);
-            EncodeDeltas(deltas, deltas.size());
+            static_cast<Derived *>(this)->EncodeDeltas(deltas, deltas.size());
         }
 
         if (delta_offsets.size() != 0) {
@@ -122,17 +124,24 @@ static struct EliasGammaPrefixSum {
 } elias_gamma_prefix_table;
 
 template <typename T, uint32_t sampling_rate = 32>
-class EliasGammaDeltaEncodedArray : public DeltaEncodedArray<T, sampling_rate> {
+class EliasGammaDeltaEncodedArray
+    : public DeltaEncodedArray<EliasGammaDeltaEncodedArray<T, sampling_rate>, T,
+                               sampling_rate> {
+
+    using Derived = EliasGammaDeltaEncodedArray<T, sampling_rate>;
+
   public:
-    typedef typename DeltaEncodedArray<T>::size_type size_type;
-    typedef typename DeltaEncodedArray<T>::pos_type pos_type;
-    typedef typename DeltaEncodedArray<T>::width_type width_type;
+    typedef typename DeltaEncodedArray<Derived, T, sampling_rate>::size_type
+        size_type;
 
-    using DeltaEncodedArray<T>::EncodingSize;
-    using DeltaEncodedArray<T>::EncodeDeltas;
-    using DeltaEncodedArray<T>::EncodeLastDelta;
+    typedef typename DeltaEncodedArray<Derived, T, sampling_rate>::pos_type
+        pos_type;
 
-    EliasGammaDeltaEncodedArray() : DeltaEncodedArray<T>() {}
+    typedef typename DeltaEncodedArray<Derived, T, sampling_rate>::width_type
+        width_type;
+
+    EliasGammaDeltaEncodedArray()
+        : DeltaEncodedArray<Derived, T, sampling_rate>() {}
 
     EliasGammaDeltaEncodedArray(std::vector<T> &elements,
                                 size_type num_elements)
@@ -183,12 +192,14 @@ class EliasGammaDeltaEncodedArray : public DeltaEncodedArray<T, sampling_rate> {
 
             T delta = element - this->last_val_;
             if (this->GetNElements() == 1) {
-                this->deltas_.Bitmap_Init(EncodingSize(delta));
-                EncodeLastDelta(delta, 0);
+                this->deltas_.Bitmap_Init(
+                    static_cast<Derived *>(this)->EncodingSize(delta));
+                static_cast<Derived *>(this)->EncodeLastDelta(delta, 0);
             } else {
                 pos_type pos = this->deltas_.GetSizeInBits();
-                this->deltas_.Realloc_increase(EncodingSize(delta));
-                EncodeLastDelta(delta, pos);
+                this->deltas_.Realloc_increase(
+                    static_cast<Derived *>(this)->EncodingSize(delta));
+                static_cast<Derived *>(this)->EncodeLastDelta(delta, pos);
             }
         }
         this->last_val_ = element;
@@ -401,13 +412,11 @@ class EliasGammaDeltaEncodedArray : public DeltaEncodedArray<T, sampling_rate> {
         return delta_sum;
     }
 
-  private:
-    virtual width_type EncodingSize(T delta) override {
+    width_type EncodingSize(T delta) {
         return 2 * (Utils::BitWidth(delta) - 1) + 1;
     }
 
-    virtual void EncodeDeltas(std::vector<T> &deltas,
-                              size_type num_deltas) override {
+    void EncodeDeltas(std::vector<T> &deltas, size_type num_deltas) {
         uint64_t pos = 0;
         for (size_t i = 0; i < num_deltas; i++) {
             uint64_t delta_bits = Utils::BitWidth(deltas[i]) - 1;
@@ -420,7 +429,7 @@ class EliasGammaDeltaEncodedArray : public DeltaEncodedArray<T, sampling_rate> {
         }
     }
 
-    virtual void EncodeLastDelta(T delta, pos_type pos) override {
+    void EncodeLastDelta(T delta, pos_type pos) {
 
         uint64_t delta_bits = Utils::BitWidth(delta) - 1;
         pos += delta_bits;

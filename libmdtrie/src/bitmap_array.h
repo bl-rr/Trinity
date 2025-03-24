@@ -330,7 +330,13 @@ template <typename T> class BitmapArray : public Bitmap {
         bit_width_ = bit_width;
     }
 
-    virtual ~BitmapArray() {}
+    ~BitmapArray() {
+        if (data_ != nullptr) {
+            free(data_);
+            data_ = nullptr;
+        }
+        size_ = 0;
+    }
 
     // Getters
     size_type GetNumElements() { return num_elements_; }
@@ -442,7 +448,13 @@ template <typename T> class UnsignedBitmapArray : public BitmapArray<T> {
         }
     }
 
-    virtual ~UnsignedBitmapArray() {}
+    ~UnsignedBitmapArray() {
+        if (this->data_ != nullptr) {
+            free(this->data_);
+            this->data_ = nullptr;
+        }
+        this->size_ = 0;
+    }
 
     // Accessors and mutators
     void Set(pos_type i, T value) {
@@ -513,7 +525,13 @@ template <typename T> class SignedBitmapArray : public BitmapArray<T> {
         }
     }
 
-    virtual ~SignedBitmapArray() {}
+    ~SignedBitmapArray() {
+        if (this->data_ != nullptr) {
+            free(this->data_);
+            this->data_ = nullptr;
+        }
+        this->size_ = 0;
+    }
 
     // Accessors and mutators
     void Set(pos_type i, T value) {

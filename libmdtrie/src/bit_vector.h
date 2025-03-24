@@ -27,7 +27,7 @@ class BitVector {
         size_ = num_bits;
     }
 
-    virtual ~BitVector() { Destroy(); }
+    ~BitVector() { Destroy(); }
 
     void Init(size_type num_bits) {
         data_ = static_cast<data_type *>(
