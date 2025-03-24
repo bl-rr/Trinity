@@ -114,8 +114,6 @@ int main(int argc, char *argv[]) {
     max_depth = 32;
     no_dynamic_sizing = true;
 
-    bitmap::CompactPtrVector primary_key_to_treeblock_mapping(total_count);
-
     /* ---------- Initialization ------------ */
 
     std::vector<level_t> bit_widths = {32, 32, 32, 32, 32, 32, 32, 32};
@@ -154,8 +152,7 @@ int main(int argc, char *argv[]) {
         }
         start = get_cpu_cycles_start();
 
-        mdtrie.insert_trie(&point, primary_key,
-                           &primary_key_to_treeblock_mapping);
+        mdtrie.insert_trie(&point, primary_key);
         end = get_cpu_cycles_end();
         cumulative += end - start;
     }
@@ -167,7 +164,7 @@ int main(int argc, char *argv[]) {
     /* ---------- WARM UP ------------ */
 
     // querying the entire range for 1000 times
-    for (int c = 0; c < 0; c++) {
+    for (int c = 0; c < 1000; c++) {
         data_point<NUM_DIMENSIONS> start_range;
         data_point<NUM_DIMENSIONS> end_range;
         std::vector<int32_t> found_points;

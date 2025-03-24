@@ -72,10 +72,6 @@ template <dimension_t DIMENSION> class tree_block {
         pointer->treeblock_frontier_num_ = get_preorder(current_frontier);
     }
 
-    std::vector<bits::compact_ptr> get_primary_key_list() {
-        return primary_key_list;
-    }
-
     preorder_t
     select_subtree(preorder_t &subtree_size, preorder_t &selected_node_depth,
                    preorder_t &selected_node_pos, preorder_t &num_primary,
@@ -493,29 +489,11 @@ template <dimension_t DIMENSION> class tree_block {
     void insert(preorder_t node, preorder_t node_pos,
                 data_point<DIMENSION> *leaf_point, level_t level,
                 preorder_t current_frontier, preorder_t current_primary,
-                n_leaves_t primary_key,
-                bitmap::CompactPtrVector *p_key_to_treeblock_compact) {
+                n_leaves_t primary_key) {
 
         morton_t current_num_children = level_to_num_children[level];
 
         if (level == max_depth_) {
-
-            current_num_children = level_to_num_children[level - 1];
-
-            morton_t parent_symbol = leaf_point->leaf_to_symbol(max_depth_ - 1);
-            morton_t tmp_symbol = dfuds_->next_symbol(
-                0, node, node_pos, (1 << current_num_children) - 1,
-                current_num_children);
-
-            while (tmp_symbol != parent_symbol) {
-                tmp_symbol = dfuds_->next_symbol(
-                    tmp_symbol + 1, node, node_pos,
-                    (1 << current_num_children) - 1, current_num_children);
-                current_primary++;
-            }
-
-            insert_primary_key_at_present_index(current_primary, primary_key,
-                                                p_key_to_treeblock_compact);
 
             return;
         }
@@ -552,8 +530,7 @@ template <dimension_t DIMENSION> class tree_block {
             total_nodes_bits_ +=
                 dfuds_->get_num_bits(node, level) - node_previous_bits;
             get_pointer(current_frontier)
-                ->insert(0, 0, leaf_point, level, 0, 0, primary_key,
-                         p_key_to_treeblock_compact);
+                ->insert(0, 0, leaf_point, level, 0, 0, primary_key);
 
             return;
         }
@@ -568,21 +545,6 @@ template <dimension_t DIMENSION> class tree_block {
                                false, level_to_num_children[level]);
             total_nodes_bits_ += dfuds_->get_num_bits(original_node, level) -
                                  original_node_previous_bits;
-
-            morton_t tmp_symbol = dfuds_->next_symbol(
-                0, node, node_pos, (1 << current_num_children) - 1,
-                current_num_children);
-
-            while (tmp_symbol != next_symbol) {
-
-                tmp_symbol = dfuds_->next_symbol(
-                    tmp_symbol + 1, node, node_pos,
-                    (1 << current_num_children) - 1, current_num_children);
-                current_primary++;
-            }
-
-            insert_primary_key_at_index(current_primary, primary_key,
-                                        p_key_to_treeblock_compact);
 
             return;
         }
@@ -662,8 +624,6 @@ template <dimension_t DIMENSION> class tree_block {
                     set_pointer(j, get_pointer(j)); // Prob not necessary
                 }
 
-            insert_primary_key_at_index(current_primary, primary_key,
-                                        p_key_to_treeblock_compact);
             return;
         } else if (num_nodes_ + (max_depth_ - level) - 1 <= max_tree_nodes) {
             uint64_t total_extra_bits = 0;
@@ -683,7 +643,7 @@ template <dimension_t DIMENSION> class tree_block {
             node_capacity_ = num_nodes_ + (max_depth_ - level);
 
             insert(node, node_pos, leaf_point, level, current_frontier,
-                   current_primary, primary_key, p_key_to_treeblock_compact);
+                   current_primary, primary_key);
             return;
         } else {
             num_treeblock_expand++;
@@ -834,25 +794,6 @@ template <dimension_t DIMENSION> class tree_block {
                     sizeof(frontier_node<DIMENSION>) * (num_frontiers_));
             }
 
-            // Copy primary key to the new block
-            for (preorder_t i = selected_primary_index;
-                 i < selected_primary_index + num_primary; i++) {
-
-                new_block->primary_key_list.push_back(primary_key_list[i]);
-                uint64_t primary_key_size = primary_key_list[i].size();
-
-                for (uint64_t j = 0; j < primary_key_size; j++) {
-                    p_key_to_treeblock_compact->Set(primary_key_list[i].get(j),
-                                                    new_block);
-                }
-            }
-
-            // Erase copied primary keys
-            primary_key_list.erase(
-                std::next(primary_key_list.begin(), selected_primary_index),
-                std::next(primary_key_list.begin(),
-                          selected_primary_index + num_primary));
-
             // Now, delete the subtree copied to the new block
             orig_selected_node_pos += dfuds_->get_num_bits(
                 orig_selected_node, node_to_depth[orig_selected_node]);
@@ -914,20 +855,18 @@ template <dimension_t DIMENSION> class tree_block {
 
                     new_block->insert(0, 0, leaf_point, level,
                                       current_frontier_new_block,
-                                      current_primary_new_block, primary_key,
-                                      p_key_to_treeblock_compact);
+                                      current_primary_new_block, primary_key);
                 } else {
-                    new_block->insert(
-                        insertion_node, insertion_node_pos, leaf_point, level,
-                        current_frontier_new_block, current_primary_new_block,
-                        primary_key, p_key_to_treeblock_compact);
+                    new_block->insert(insertion_node, insertion_node_pos,
+                                      leaf_point, level,
+                                      current_frontier_new_block,
+                                      current_primary_new_block, primary_key);
                 }
             }
             // If the insertion is in the old block
             else {
                 insert(insertion_node, insertion_node_pos, leaf_point, level,
-                       current_frontier, current_primary, primary_key,
-                       p_key_to_treeblock_compact);
+                       current_frontier, current_primary, primary_key);
             }
             return;
         }
@@ -935,10 +874,8 @@ template <dimension_t DIMENSION> class tree_block {
 
     // Traverse the current TreeBlock, going into frontier nodes as needed
     // Until it cannot traverse further and calls insertion
-    void
-    insert_remaining(data_point<DIMENSION> *leaf_point, level_t level,
-                     n_leaves_t primary_key,
-                     bitmap::CompactPtrVector *p_key_to_treeblock_compact) {
+    void insert_remaining(data_point<DIMENSION> *leaf_point, level_t level,
+                          n_leaves_t primary_key) {
 
         preorder_t current_node = 0;
         preorder_t current_node_pos = 0;
@@ -967,8 +904,8 @@ template <dimension_t DIMENSION> class tree_block {
                 current_node == get_preorder(current_frontier)) {
 
                 tree_block *next_block = get_pointer(current_frontier);
-                next_block->insert_remaining(leaf_point, level + 1, primary_key,
-                                             p_key_to_treeblock_compact);
+                next_block->insert_remaining(leaf_point, level + 1,
+                                             primary_key);
 
                 return;
             }
@@ -976,8 +913,7 @@ template <dimension_t DIMENSION> class tree_block {
         }
 
         insert(current_node, current_node_pos, leaf_point, level,
-               current_frontier, current_primary, primary_key,
-               p_key_to_treeblock_compact);
+               current_frontier, current_primary, primary_key);
 
         return;
     }
@@ -1161,157 +1097,6 @@ template <dimension_t DIMENSION> class tree_block {
         }
     }
 
-    morton_t get_node_path_primary_key(n_leaves_t primary_key,
-                                       std::vector<morton_t> &node_path) {
-
-        preorder_t stack[64] = {};
-        preorder_t path[64] = {};
-        int symbol[64];
-        level_t sTop_to_level[64] = {};
-
-        for (uint16_t i = 0; i < 64; i++) {
-            symbol[i] = -1;
-        }
-        size_t node_positions[2048];
-        node_positions[0] = 0;
-        int sTop = 0;
-        preorder_t top_node = 0;
-        symbol[sTop] =
-            dfuds_->next_symbol(symbol[sTop] + 1, 0, 0,
-                                (1 << level_to_num_children[root_depth_]) - 1,
-                                level_to_num_children[root_depth_]);
-        stack[sTop] =
-            dfuds_->get_num_children(0, 0, level_to_num_children[root_depth_]);
-        sTop_to_level[sTop] = root_depth_;
-
-        level_t current_level = root_depth_ + 1;
-        preorder_t current_node = 1;
-        preorder_t current_node_pos = dfuds_->get_num_bits(0, root_depth_);
-
-        preorder_t current_frontier = 0;
-        preorder_t current_primary = 0;
-
-        if (frontiers_ != nullptr && current_frontier < num_frontiers_ &&
-            current_node > get_preorder(current_frontier))
-            ++current_frontier;
-        preorder_t next_frontier_preorder;
-        morton_t parent_symbol = -1;
-        if (num_frontiers_ == 0 || current_frontier >= num_frontiers_)
-            next_frontier_preorder = -1;
-        else
-            next_frontier_preorder = get_preorder(current_frontier);
-
-        while (current_node < num_nodes_ && sTop >= 0) {
-
-            node_positions[current_node] = current_node_pos;
-            current_node_pos +=
-                dfuds_->get_num_bits(current_node, current_level);
-
-            if (current_node == next_frontier_preorder) {
-                top_node = path[sTop];
-                symbol[sTop] = dfuds_->next_symbol(
-                    symbol[sTop] + 1, top_node, node_positions[top_node],
-                    (1 << level_to_num_children[sTop_to_level[sTop]]) - 1,
-                    level_to_num_children[sTop_to_level[sTop]]);
-                ++current_frontier;
-                if (num_frontiers_ == 0 || current_frontier >= num_frontiers_)
-                    next_frontier_preorder = -1;
-                else
-                    next_frontier_preorder = get_preorder(current_frontier);
-
-                --stack[sTop];
-            }
-            // It is "-1" because current_level is 0th indexed.
-            else if (current_level < max_depth_ - 1) {
-                sTop++;
-                stack[sTop] = dfuds_->get_num_children(
-                    current_node, node_positions[current_node],
-                    level_to_num_children[current_level]);
-                path[sTop] = current_node;
-                sTop_to_level[sTop] = current_level;
-
-                symbol[sTop] = dfuds_->next_symbol(
-                    symbol[sTop] + 1, current_node,
-                    node_positions[current_node],
-                    (1 << level_to_num_children[sTop_to_level[sTop]]) - 1,
-                    level_to_num_children[sTop_to_level[sTop]]);
-                ++current_level;
-            } else {
-                --stack[sTop];
-                if (current_level == max_depth_ - 1) {
-
-                    preorder_t new_current_primary =
-                        current_primary +
-                        dfuds_->get_num_children(
-                            current_node, node_positions[current_node],
-                            level_to_num_children[current_level]);
-                    bool found = false;
-                    for (preorder_t p = current_primary;
-                         p < new_current_primary; p++) {
-                        if (primary_key_list[p].check_if_present(primary_key)) {
-                            found = true;
-                            parent_symbol = dfuds_->get_k_th_set_bit(
-                                current_node,
-                                p - current_primary /* 0-indexed*/,
-                                node_positions[current_node],
-                                level_to_num_children[current_level]);
-                            break;
-                        }
-                    }
-                    current_primary = new_current_primary;
-                    if (!found && stack[sTop] > 0) {
-                        top_node = path[sTop];
-
-                        symbol[sTop] = dfuds_->next_symbol(
-                            symbol[sTop] + 1, top_node,
-                            node_positions[top_node],
-                            (1 << level_to_num_children[sTop_to_level[sTop]]) -
-                                1,
-                            level_to_num_children[sTop_to_level[sTop]]);
-                    }
-                    if (found) {
-                        break;
-                    }
-                }
-            }
-            ++current_node;
-
-            bool backtraceked = false;
-            while (sTop >= 0 && stack[sTop] == 0) {
-                backtraceked = true;
-                path[sTop] = 0;
-                symbol[sTop] = -1;
-                --sTop;
-                --current_level;
-                if (sTop >= 0)
-                    --stack[sTop];
-            }
-            if (backtraceked) {
-                top_node = path[sTop];
-                symbol[sTop] = dfuds_->next_symbol(
-                    symbol[sTop] + 1, top_node, node_positions[top_node],
-                    (1 << level_to_num_children[sTop_to_level[sTop]]) - 1,
-                    level_to_num_children[sTop_to_level[sTop]]);
-            }
-        }
-        if (current_node == num_nodes_) {
-            fprintf(stderr, "node not found!\n");
-            return 0;
-        }
-        for (int i = 0; i <= sTop; i++) {
-            node_path[root_depth_ + i] = symbol[i];
-        }
-        if (root_depth_ != trie_depth_) {
-            ((tree_block<DIMENSION> *)parent_combined_ptr_)
-                ->get_node_path(treeblock_frontier_num_, node_path);
-        } else {
-            ((trie_node<DIMENSION> *)parent_combined_ptr_)
-                ->get_node_path(root_depth_, node_path);
-        }
-        lookup_scanned_nodes += current_node;
-        return parent_symbol;
-    }
-
     data_point<DIMENSION> *
     node_path_to_coordinates(std::vector<morton_t> &node_path,
                              dimension_t dimension) const {
@@ -1400,12 +1185,10 @@ template <dimension_t DIMENSION> class tree_block {
                 current_primary++;
             }
 
-            n_leaves_t list_size = primary_key_list[current_primary].size();
-            for (n_leaves_t i = 0; i < list_size; i++) {
-                for (dimension_t j = 0; j < DIMENSION; j++) {
-                    found_points.push_back(start_range->get_coordinate(j));
-                }
+            for (dimension_t j = 0; j < DIMENSION; j++) {
+                found_points.push_back(start_range->get_coordinate(j));
             }
+
             return;
         }
 
@@ -1507,25 +1290,6 @@ template <dimension_t DIMENSION> class tree_block {
         }
     }
 
-    void insert_primary_key_at_present_index(
-        n_leaves_t index, n_leaves_t primary_key,
-        bitmap::CompactPtrVector *p_key_to_treeblock_compact) {
-
-        p_key_to_treeblock_compact->Set(primary_key, this);
-        primary_key_list[index].push(primary_key);
-    }
-
-    void insert_primary_key_at_index(
-        n_leaves_t index, n_leaves_t primary_key,
-        bitmap::CompactPtrVector *p_key_to_treeblock_compact) {
-
-        p_key_to_treeblock_compact->Set(primary_key, this);
-
-        auto primary_key_ptr = bits::compact_ptr(primary_key);
-        primary_key_list.insert(primary_key_list.begin() + index,
-                                primary_key_ptr);
-    }
-
     uint64_t size() {
 
         uint64_t total_size = 0;
@@ -1547,11 +1311,7 @@ template <dimension_t DIMENSION> class tree_block {
 
         total_size += sizeof(parent_combined_ptr_);
         total_size += sizeof(treeblock_frontier_num_);
-        total_size += sizeof(primary_key_list) +
-                      primary_key_list.size() * sizeof(bits::compact_ptr);
-        for (preorder_t i = 0; i < primary_key_list.size(); i++) {
-            total_size += primary_key_list[i].size_overhead();
-        }
+
         return total_size;
     }
 
@@ -1566,7 +1326,6 @@ template <dimension_t DIMENSION> class tree_block {
 
     void *parent_combined_ptr_ = NULL;
     preorder_t treeblock_frontier_num_ = 0;
-    std::vector<bits::compact_ptr> primary_key_list;
 };
 
 #endif // MD_TRIE_TREE_BLOCK_H

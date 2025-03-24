@@ -85,28 +85,14 @@ template <dimension_t DIMENSION> class md_trie {
         return current_treeblock;
     }
 
-    void insert_trie(data_point<DIMENSION> *leaf_point, n_leaves_t primary_key,
-                     bitmap::CompactPtrVector *p_key_to_treeblock_compact) {
+    void insert_trie(data_point<DIMENSION> *leaf_point,
+                     n_leaves_t primary_key) {
 
         level_t level = 0;
         trie_node<DIMENSION> *current_trie_node = root_;
         tree_block<DIMENSION> *current_treeblock =
             walk_trie(current_trie_node, leaf_point, level);
-        current_treeblock->insert_remaining(leaf_point, level, primary_key,
-                                            p_key_to_treeblock_compact);
-    }
-
-    data_point<DIMENSION> *
-    lookup_trie(n_leaves_t primary_key,
-                bitmap::CompactPtrVector *p_key_to_treeblock_compact) {
-        std::vector<morton_t> node_path_from_primary(max_depth_ + 1);
-        tree_block<DIMENSION> *t_ptr =
-            (tree_block<DIMENSION> *)p_key_to_treeblock_compact->At(
-                primary_key);
-        morton_t parent_symbol_from_primary = t_ptr->get_node_path_primary_key(
-            primary_key, node_path_from_primary);
-        node_path_from_primary[max_depth_ - 1] = parent_symbol_from_primary;
-        return t_ptr->node_path_to_coordinates(node_path_from_primary, 9);
+        current_treeblock->insert_remaining(leaf_point, level, primary_key);
     }
 
     bool check(data_point<DIMENSION> *leaf_point) const {
@@ -119,7 +105,7 @@ template <dimension_t DIMENSION> class md_trie {
         return result;
     }
 
-    uint64_t size(bitmap::CompactPtrVector *p_key_to_treeblock_compact) {
+    uint64_t size() {
 
         uint64_t total_size = sizeof(root_) + sizeof(max_depth_);
         total_size += sizeof(max_tree_nodes_);
@@ -162,9 +148,6 @@ template <dimension_t DIMENSION> class md_trie {
         total_size += sizeof(max_tree_nodes_);
         total_size += sizeof(max_depth_);
         total_size += sizeof(trie_depth_);
-
-        total_size += sizeof(p_key_to_treeblock_compact);
-        total_size += p_key_to_treeblock_compact->size_overhead();
 
         total_size += sizeof(dimension_to_num_bits) +
                       dimension_to_num_bits.size() * sizeof(morton_t);
@@ -219,6 +202,9 @@ template <dimension_t DIMENSION> class md_trie {
     }
 
   private:
+    // NOTE: we removed p_key_to_treeblock_compact, meaning that we can no
+    // longer support duplicate primary keys
+
     trie_node<DIMENSION> *root_ = nullptr;
     level_t max_depth_;
     preorder_t max_tree_nodes_;
