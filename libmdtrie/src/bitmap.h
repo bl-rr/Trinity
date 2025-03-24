@@ -1,6 +1,7 @@
 #ifndef BITMAP_BITMAP_H_
 #define BITMAP_BITMAP_H_
 
+#include "device_vector.h"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -9,7 +10,6 @@
 #include <iostream>
 #include <signal.h>
 #include <sys/time.h>
-#include <vector>
 
 namespace bitmap {
 

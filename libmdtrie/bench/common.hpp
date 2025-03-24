@@ -141,7 +141,9 @@ void use_nyc_setting(int dimensions, int _total_points_count) {
     max_depth = 28;
     no_dynamic_sizing = true;
 
-    create_level_to_num_children(bit_widths, start_bits, max_depth);
+    printf("bruh");
+    exit(100);
+    // create_level_to_num_children(bit_widths, start_bits, max_depth);
 }
 
 void use_github_setting(int dimensions, int _total_points_count) {
@@ -187,7 +189,9 @@ void use_github_setting(int dimensions, int _total_points_count) {
     no_dynamic_sizing = true;
     max_tree_node = 512;
 
-    create_level_to_num_children(bit_widths, start_bits, max_depth);
+    printf("bruh");
+    exit(100);
+    // create_level_to_num_children(bit_widths, start_bits, max_depth);
 }
 
 void use_tpch_setting(
@@ -241,7 +245,11 @@ void use_tpch_setting(
     trie_depth = 6;
     max_depth = 32;
     no_dynamic_sizing = true;
-    create_level_to_num_children(bit_widths, start_bits, max_depth);
+
+    printf("bruh");
+    exit(100);
+
+    // create_level_to_num_children(bit_widths, start_bits, max_depth);
 }
 
 void flush_vector_to_file(std::vector<TimeStamp> vect, std::string filename) {

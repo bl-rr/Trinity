@@ -34,14 +34,6 @@ template <dimension_t DIMENSION> class trie_node {
         trie_or_treeblock_ptr_ = block;
     }
 
-    void get_node_path(level_t level, std::vector<morton_t> &node_path) {
-
-        if (parent_trie_node_) {
-            node_path[level - 1] = parent_symbol_;
-            parent_trie_node_->get_node_path(level - 1, node_path);
-        }
-    }
-
     trie_node<DIMENSION> *get_parent_trie_node() { return parent_trie_node_; }
 
     void set_parent_trie_node(trie_node<DIMENSION> *node) {

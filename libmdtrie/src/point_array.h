@@ -19,7 +19,7 @@ template <dimension_t DIMENSION> class point_array {
     inline data_point<DIMENSION> *at(size_t i) { return points_[i]; }
 
   private:
-    std::vector<data_point<DIMENSION> *> points_;
+    device_vector<data_point<DIMENSION> *> points_;
 };
 
 #endif // MD_TRIE_POINT_ARRAY_H

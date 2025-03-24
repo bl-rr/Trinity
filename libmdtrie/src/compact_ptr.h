@@ -21,8 +21,8 @@ class compact_ptr {
 
     compact_ptr() {}
 
-    std::vector<n_leaves_t> *get_vector_pointer() {
-        return (std::vector<n_leaves_t> *)(ptr_ << 4ULL);
+    device_vector<n_leaves_t> *get_vector_pointer() {
+        return (device_vector<n_leaves_t> *)(ptr_ << 4ULL);
     }
 
     bitmap::EliasGammaDeltaEncodedArray<n_leaves_t> *
@@ -31,7 +31,7 @@ class compact_ptr {
                                                                    << 4ULL);
     }
 
-    bool scan_if_present(std::vector<n_leaves_t> *vect,
+    bool scan_if_present(device_vector<n_leaves_t> *vect,
                          n_leaves_t primary_key) {
         int vect_size = vect->size();
 
@@ -42,7 +42,7 @@ class compact_ptr {
         return false;
     }
 
-    bool binary_if_present(std::vector<n_leaves_t> *vect,
+    bool binary_if_present(device_vector<n_leaves_t> *vect,
                            n_leaves_t primary_key) {
         uint64_t low = 0;
         uint64_t high = vect->size() - 1;
@@ -67,7 +67,7 @@ class compact_ptr {
             return sizeof(compact_ptr);
         }
         if (flag_ == 1) {
-            std::vector<n_leaves_t> *vect_ptr = get_vector_pointer();
+            device_vector<n_leaves_t> *vect_ptr = get_vector_pointer();
             return sizeof(*vect_ptr) +
                    sizeof(n_leaves_t) /*primary key size*/ * vect_ptr->size() +
                    sizeof(compact_ptr);
@@ -80,7 +80,7 @@ class compact_ptr {
     void push(n_leaves_t primary_key) {
 
         if (flag_ == 0) {
-            auto array = new std::vector<n_leaves_t>;
+            auto array = new device_vector<n_leaves_t>;
             array->push_back((n_leaves_t)ptr_);
             array->push_back(primary_key);
             ptr_ = ((uintptr_t)array) >> 4ULL;
@@ -88,7 +88,7 @@ class compact_ptr {
             return;
         } else if (size() == compact_pointer_vector_size_limit + 1) {
 
-            std::vector<n_leaves_t> *vect_ptr = get_vector_pointer();
+            device_vector<n_leaves_t> *vect_ptr = get_vector_pointer();
 
             auto enc_array =
                 new bitmap::EliasGammaDeltaEncodedArray<n_leaves_t>(

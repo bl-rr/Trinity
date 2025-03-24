@@ -123,8 +123,8 @@ template <dimension_t DIMENSION> class data_point {
         }
     }
 
-    std::vector<int32_t> generate_vector() {
-        std::vector<int32_t> return_pt(DIMENSION);
+    device_vector<int32_t> generate_vector() {
+        device_vector<int32_t> return_pt(DIMENSION);
 
         for (unsigned i = 0; i < DIMENSION; i++) {
             return_pt[i] = coordinates_[i];

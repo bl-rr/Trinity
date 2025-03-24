@@ -1,5 +1,4 @@
-#include "benchmark.hpp"
-#include "common.hpp"
+#include "device_vector.h"
 #include "parser.hpp"
 #include "trie.h"
 #include <climits>
@@ -116,8 +115,8 @@ int main(int argc, char *argv[]) {
 
     /* ---------- Initialization ------------ */
 
-    std::vector<level_t> bit_widths = {32, 32, 32, 32, 32, 32, 32, 32};
-    std::vector<level_t> start_bits = {0, 0, 0, 0, 0, 0, 0, 0};
+    device_vector<level_t> bit_widths(8, (level_t)32);
+    device_vector<level_t> start_bits(8, (level_t)0);
 
     create_level_to_num_children(bit_widths, start_bits, max_depth);
 
@@ -167,7 +166,7 @@ int main(int argc, char *argv[]) {
     for (int c = 0; c < 1000; c++) {
         data_point<NUM_DIMENSIONS> start_range;
         data_point<NUM_DIMENSIONS> end_range;
-        std::vector<int32_t> found_points;
+        device_vector<int32_t> found_points;
         for (dimension_t i = 0; i < NUM_DIMENSIONS; i++) {
             start_range.set_coordinate(i, 0);
             end_range.set_coordinate(i, INT32_MAX);
@@ -206,7 +205,7 @@ int main(int argc, char *argv[]) {
         for (int c = 0; c < query_count; c++) {
             data_point<NUM_DIMENSIONS> start_range;
             data_point<NUM_DIMENSIONS> end_range;
-            std::vector<int32_t> found_points;
+            device_vector<int32_t> found_points;
             for (dimension_t i = 0; i < NUM_DIMENSIONS; i++) {
                 start_range.set_coordinate(i, start_ranges_buffer[ranges_idx]);
                 end_range.set_coordinate(i, end_ranges_buffer[ranges_idx++]);

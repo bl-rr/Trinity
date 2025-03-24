@@ -25,17 +25,17 @@ class DeltaEncodedArray {
     // virtual width_type EncodingSize(T delta) = 0;
 
     // Encode the delta values
-    // virtual void EncodeDeltas(std::vector<T> &deltas, size_type num_deltas) =
-    // 0; virtual void EncodeLastDelta(T delta, pos_type pos) = 0;
+    // virtual void EncodeDeltas(device_vector<T> &deltas, size_type num_deltas)
+    // = 0; virtual void EncodeLastDelta(T delta, pos_type pos) = 0;
 
     // Encode the delta encoded array
-    void Encode(std::vector<T> &elements, size_type num_elements) {
+    void Encode(device_vector<T> &elements, size_type num_elements) {
         if (num_elements == 0) {
             return;
         }
         num_elements_ = num_elements;
-        std::vector<T> samples, deltas;
-        std::vector<pos_type> delta_offsets;
+        device_vector<T> samples, deltas;
+        device_vector<pos_type> delta_offsets;
         T last_val = 0;
         size_type cum_delta_size = 0;
 
@@ -143,7 +143,7 @@ class EliasGammaDeltaEncodedArray
     EliasGammaDeltaEncodedArray()
         : DeltaEncodedArray<Derived, T, sampling_rate>() {}
 
-    EliasGammaDeltaEncodedArray(std::vector<T> &elements,
+    EliasGammaDeltaEncodedArray(device_vector<T> &elements,
                                 size_type num_elements)
         : EliasGammaDeltaEncodedArray<T>() {
         this->Encode(elements, num_elements);
@@ -416,7 +416,7 @@ class EliasGammaDeltaEncodedArray
         return 2 * (Utils::BitWidth(delta) - 1) + 1;
     }
 
-    void EncodeDeltas(std::vector<T> &deltas, size_type num_deltas) {
+    void EncodeDeltas(device_vector<T> &deltas, size_type num_deltas) {
         uint64_t pos = 0;
         for (size_t i = 0; i < num_deltas; i++) {
             uint64_t delta_bits = Utils::BitWidth(deltas[i]) - 1;

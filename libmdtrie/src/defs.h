@@ -90,8 +90,8 @@ level_t max_depth_;
  */
 
 bitmap::CompactPtrVector *p_key_to_treeblock_compact;
-std::vector<level_t> dimension_to_num_bits;
-std::vector<level_t> start_dimension_bits;
+device_vector<level_t> dimension_to_num_bits;
+device_vector<level_t> start_dimension_bits;
 bool no_dynamic_sizing = false;
 std::map<void *, void *> old_ptr_to_new_ptr;
 std::map<void *, size_t> ptr_to_file_offset;
@@ -113,8 +113,8 @@ uint64_t checked_points_count = 0;
 int query_optimization = 2;
 bool is_collapsed_node_exp = false;
 
-void create_level_to_num_children(std::vector<level_t> bit_widths,
-                                  std::vector<level_t> start_bits,
+void create_level_to_num_children(device_vector<level_t> bit_widths,
+                                  device_vector<level_t> start_bits,
                                   level_t max_level) {
 
     dimension_to_num_bits = bit_widths;

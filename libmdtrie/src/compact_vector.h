@@ -441,9 +441,9 @@ class CompactPrimaryVector : CompactVector<uint64_t, 46> {
 
     size_t flag(pos_type idx) { return At(idx) & 0b11; }
 
-    std::vector<uint64_t> *get_vector_pointer(pos_type idx) {
+    device_vector<uint64_t> *get_vector_pointer(pos_type idx) {
 
-        return (std::vector<uint64_t> *)(ptr(idx) << 4ULL);
+        return (device_vector<uint64_t> *)(ptr(idx) << 4ULL);
     }
 
     bitmap::EliasGammaDeltaEncodedArray<uint64_t> *
@@ -452,7 +452,8 @@ class CompactPrimaryVector : CompactVector<uint64_t, 46> {
                                                                  << 4ULL);
     }
 
-    bool binary_if_present(std::vector<uint64_t> *vect, uint64_t primary_key) {
+    bool binary_if_present(device_vector<uint64_t> *vect,
+                           uint64_t primary_key) {
 
         uint64_t low = 0;
         uint64_t high = vect->size() - 1;
@@ -476,7 +477,7 @@ class CompactPrimaryVector : CompactVector<uint64_t, 46> {
         if (flag(idx) == 0) {
             return 0 /*sizeof(compact_ptr)*/;
         } else if (flag(idx) == 1) {
-            std::vector<uint64_t> *vect_ptr = get_vector_pointer(idx);
+            device_vector<uint64_t> *vect_ptr = get_vector_pointer(idx);
             return /*sizeof(*vect_ptr) + */ sizeof(
                        uint32_t) /*primary key size*/
                    * vect_ptr->size() /*+ sizeof(compact_ptr)*/;
@@ -489,7 +490,7 @@ class CompactPrimaryVector : CompactVector<uint64_t, 46> {
     void push(pos_type idx, uint64_t primary_key) {
 
         if (flag(idx) == 0) {
-            auto array = new std::vector<uint64_t>;
+            auto array = new device_vector<uint64_t>;
             array->push_back((uint64_t)ptr(idx));
             array->push_back(primary_key);
             set_ptr(idx, ((uintptr_t)array) >> 4ULL);
@@ -497,7 +498,7 @@ class CompactPrimaryVector : CompactVector<uint64_t, 46> {
             return;
         } else if (size(idx) == compact_pointer_vector_size_limit + 1) {
 
-            std::vector<uint64_t> *vect_ptr = get_vector_pointer(idx);
+            device_vector<uint64_t> *vect_ptr = get_vector_pointer(idx);
             auto enc_array = new bitmap::EliasGammaDeltaEncodedArray<uint64_t>(
                 *vect_ptr, vect_ptr->size());
             delete vect_ptr;
