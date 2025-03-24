@@ -548,12 +548,12 @@ class compressed_bitmap {
     inline void set_symbol(preorder_t node, pos_type node_pos, morton_t symbol,
                            bool was_empty, width_type num_children) {
 
-        if (is_collapse(node)) {
-            if (is_collapsed_node_exp) {
-                std::cout << "wrong! set symbol";
-                exit(-1);
-            }
-        }
+        // if (is_collapse(node)) {
+        //     if (is_collapsed_node_exp) {
+        //         std::cout << "wrong! set symbol";
+        //         exit(-1);
+        //     }
+        // }
 
         if (is_collapse(node)) {
             if (!was_empty) {

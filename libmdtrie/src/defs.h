@@ -19,7 +19,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <map>
+// #include <map>
 
 typedef uint64_t preorder_t;
 typedef uint64_t n_leaves_t;
@@ -93,14 +93,14 @@ bitmap::CompactPtrVector *p_key_to_treeblock_compact;
 device_vector<level_t> dimension_to_num_bits;
 device_vector<level_t> start_dimension_bits;
 bool no_dynamic_sizing = false;
-std::map<void *, void *> old_ptr_to_new_ptr;
-std::map<void *, size_t> ptr_to_file_offset;
+// std::map<void *, void *> old_ptr_to_new_ptr;
+// std::map<void *, size_t> ptr_to_file_offset;
 size_t current_file_offset = 0;
 n_leaves_t treeblock_ctr = 0;
 
-std::mutex cache_lock;
+// std::mutex cache_lock;
 
-std::unordered_map<int32_t, int32_t> client_to_server;
+// std::unordered_map<int32_t, int32_t> client_to_server;
 bool enable_client_cache_pkey_mapping = false;
 bool REUSE_RANGE_SEARCH_CHILD = true;
 

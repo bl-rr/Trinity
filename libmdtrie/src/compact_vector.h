@@ -272,8 +272,8 @@ template <typename VectorImpl> class const_vector_iterator {
 
 template <typename T, uint8_t W> class CompactVector : public BitVector {
   public:
-    static_assert(!std::numeric_limits<T>::is_signed,
-                  "Signed types cannot be used.");
+    // static_assert(!std::numeric_limits<T>::is_signed,
+    //               "Signed types cannot be used.");
     // Type definitions
     typedef typename BitVector::size_type size_type;
     typedef typename BitVector::width_type width_type;
@@ -286,7 +286,7 @@ template <typename T, uint8_t W> class CompactVector : public BitVector {
     typedef T *pointer;
     typedef vector_iterator<CompactVector<T, W>> iterator;
     typedef const_vector_iterator<CompactVector<T, W>> const_iterator;
-    typedef std::random_access_iterator_tag iterator_category;
+    // typedef std::random_access_iterator_tag iterator_category;
 
     // Constructors and destructors
     CompactVector() : BitVector() {}

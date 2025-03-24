@@ -5,6 +5,14 @@
 
 #include <limits>
 
+namespace ba_util {
+template <typename T> void swap(T &a, T &b) {
+    T temp = a;
+    a = b;
+    b = temp;
+}
+} // namespace ba_util
+
 namespace bitmap {
 
 // Reference to a value
@@ -418,8 +426,8 @@ class UnsizedBitmapArray : public Bitmap {
 
 template <typename T> class UnsignedBitmapArray : public BitmapArray<T> {
   public:
-    static_assert(!std::numeric_limits<T>::is_signed,
-                  "Signed types cannot be used with UnsignedBitmapArray.");
+    // static_assert(!std::numeric_limits<T>::is_signed,
+    //               "Signed types cannot be used with UnsignedBitmapArray.");
 
     // Type definitions
     typedef typename BitmapArray<T>::size_type size_type;
@@ -432,7 +440,7 @@ template <typename T> class UnsignedBitmapArray : public BitmapArray<T> {
     typedef value_reference<UnsignedBitmapArray<T>> reference;
     typedef bitmap_array_iterator<UnsignedBitmapArray<T>> iterator;
     typedef const_bitmap_array_iterator<UnsignedBitmapArray<T>> const_iterator;
-    typedef std::random_access_iterator_tag iterator_category;
+    // typedef std::random_access_iterator_tag iterator_category;
 
     UnsignedBitmapArray() : BitmapArray<T>() {}
 
@@ -487,7 +495,7 @@ template <typename T> class UnsignedBitmapArray : public BitmapArray<T> {
     }
 
     void swap(const UnsignedBitmapArray<T> &other) {
-        using std::swap;
+        using ba_util::swap;
         swap(this->data_, other.data_);
         swap(this->size_, other.size_);
         swap(this->num_elements_, other.num_elements_);
@@ -497,8 +505,9 @@ template <typename T> class UnsignedBitmapArray : public BitmapArray<T> {
 
 template <typename T> class SignedBitmapArray : public BitmapArray<T> {
   public:
-    static_assert(std::numeric_limits<T>::is_signed,
-                  "Unsigned types should not be used with SignedBitmapArray.");
+    // static_assert(std::numeric_limits<T>::is_signed,
+    //               "Unsigned types should not be used with
+    //               SignedBitmapArray.");
 
     // Type definitions
     typedef typename BitmapArray<T>::size_type size_type;
@@ -511,7 +520,7 @@ template <typename T> class SignedBitmapArray : public BitmapArray<T> {
     typedef value_reference<SignedBitmapArray<T>> reference;
     typedef bitmap_array_iterator<SignedBitmapArray<T>> iterator;
     typedef const_bitmap_array_iterator<SignedBitmapArray<T>> const_iterator;
-    typedef std::random_access_iterator_tag iterator_category;
+    // typedef std::random_access_iterator_tag iterator_category;
 
     SignedBitmapArray() : BitmapArray<T>() {}
 
@@ -567,7 +576,7 @@ template <typename T> class SignedBitmapArray : public BitmapArray<T> {
     const_iterator cend() const { return iterator(this, this->num_elements_); }
 
     void swap(const SignedBitmapArray<T> &other) {
-        using std::swap;
+        using ba_util::swap;
         swap(this->data_, other.data_);
         swap(this->size_, other.size_);
         swap(this->num_elements_, other.num_elements_);
