@@ -12,7 +12,7 @@ template <dimension_t DIMENSION> class trie_node {
     explicit trie_node(bool is_leaf, dimension_t num_dimensions) {
         if (!is_leaf) {
             trie_or_treeblock_ptr_ = (trie_node<DIMENSION> **)calloc(
-                sizeof(trie_node<DIMENSION> *), 1 << num_dimensions);
+                1 << num_dimensions, sizeof(trie_node<DIMENSION> *));
         }
     }
 
@@ -57,9 +57,168 @@ template <dimension_t DIMENSION> class trie_node {
         return total_size;
     }
 
+    /// @brief
+    /// @param file
+    /// @param level
+    /// @param node_offset the offset to file at which the node should be
+    ///                    inserted
+    /// @param temp_node a previously wiped out trie_node<DIMENSION> that could
+    ///                  be reused, it is this function's responsibility to free
+    void serialize(FILE *file, level_t level, uint64_t node_offset,
+                   trie_node<DIMENSION> *temp_node) {
+
+        // ensure we have allocated space for this node
+        assert(current_offset > node_offset);
+
+        // each node should only be serialized once
+        assert(pointers_to_offsets_map.find((uint64_t)this) ==
+               pointers_to_offsets_map.end());
+
+        // the location of insertion is known at this point, store (this ->
+        // offset) in the map and update the offset
+        pointers_to_offsets_map.insert({(uint64_t)this, node_offset});
+
+        // again, reuse the buffer for easy modification of the node copy
+        memcpy(temp_node, this, sizeof(trie_node<DIMENSION>));
+
+        // populate parent_trie_node_ if the node is not root
+        if (!this->parent_trie_node_)
+            assert(level == 0);
+        else
+            // else the parent_trie_node_ should be in the map
+            temp_node->parent_trie_node_ =
+                (trie_node<DIMENSION> *)pointers_to_offsets_map.at(
+                    (uint64_t)(this->get_parent_trie_node()));
+
+        // populate temp_node for insertion, but trie_node's nature differs with
+        // level:
+        //      1) leaf -> tree_block
+        //      2) internal -> list of trie_node<DIMENSION> *
+        if (level == trie_depth_) {
+            // at this point, the trie_node is probably at the end of the
+            // insertion queue, meaning it can be inserted right away
+            assert((current_offset - sizeof(trie_node<DIMENSION>)) ==
+                   node_offset);
+
+            // this is a leaf node and should have a tree_block that needs
+            // serializing
+            assert(this->get_block());
+            // this block should not have been allocated yet
+            assert(
+                pointers_to_offsets_map.find((uint64_t)(this->get_block())) ==
+                pointers_to_offsets_map.end());
+
+            // we need to create the block on file, and
+            // `current_offset` is the next writing position
+            temp_node->trie_or_treeblock_ptr_ = (void *)current_offset;
+
+            // node has all the necessary info, write the node at the
+            // position `node_offset`
+            if (ftell(file) != node_offset) {
+                fseek(file, node_offset, SEEK_SET);
+                fwrite(temp_node, sizeof(trie_node<DIMENSION>), 1, file);
+                fseek(file, 0, SEEK_END);
+            } else
+                fwrite(temp_node, sizeof(trie_node<DIMENSION>), 1, file);
+
+            free(temp_node);
+
+            // write empty space for treeblock
+            tree_block<DIMENSION> *wipe_out_treeblock =
+                (tree_block<DIMENSION> *)calloc(1,
+                                                sizeof(tree_block<DIMENSION>));
+            fwrite(wipe_out_treeblock, sizeof(tree_block<DIMENSION>), 1, file);
+            uint64_t treeblock_offset = current_offset;
+            current_offset += sizeof(tree_block<DIMENSION>);
+
+            this->get_block()->serialize(file, treeblock_offset,
+                                         wipe_out_treeblock);
+        } else {
+            // this is not a leafnode, but a list of
+            //      trie_node<DIMENSION> *
+            // of size
+            //      1 << level_to_num_children[level]
+
+            // create the big chunk
+            trie_node<DIMENSION> **temp_children =
+                (trie_node<DIMENSION> **)calloc(
+                    1 << level_to_num_children[level],
+                    sizeof(trie_node<DIMENSION> *));
+            // write to file
+            fwrite(temp_children, sizeof(trie_node<DIMENSION> *),
+                   1 << level_to_num_children[level], file);
+            uint64_t temp_children_offset = current_offset;
+            pointers_to_offsets_map.insert(
+                {(uint64_t)this->trie_or_treeblock_ptr_, temp_children_offset});
+            current_offset += sizeof(trie_node<DIMENSION> *) *
+                              (1 << level_to_num_children[level]);
+
+            // don't need to copy here, because it's all pointers, and other
+            // wise intialised to be nullptr anyway
+            // memcpy(temp_children,
+            //        (trie_node<DIMENSION> **)this->trie_or_treeblock_ptr_,
+            //        sizeof(trie_node<DIMENSION> *) *
+            //            (1 << level_to_num_children[level]));
+
+            // create dummy node to write empty space
+            trie_node<DIMENSION> *wipe_out_trie_node =
+                (trie_node<DIMENSION> *)calloc(1, sizeof(trie_node<DIMENSION>));
+
+            // create space for all empty nodes
+            for (int i = 0; i < (1 << level_to_num_children[level]); i++) {
+                if (this->get_child(i)) {
+                    // the child node should not have been created yet
+                    assert(pointers_to_offsets_map.find(
+                               (uint64_t)(this->get_child(i))) ==
+                           pointers_to_offsets_map.end());
+
+                    temp_children[i] = (trie_node<DIMENSION> *)current_offset;
+                    uint64_t child_offset = current_offset;
+
+                    fwrite(wipe_out_trie_node, sizeof(trie_node<DIMENSION>), 1,
+                           file);
+                    current_offset += sizeof(trie_node<DIMENSION>);
+
+                    this->get_child(i)->serialize(
+                        file, level + 1, child_offset,
+                        (trie_node<DIMENSION> *)calloc(
+                            1, sizeof(trie_node<DIMENSION>)));
+                }
+            }
+
+            free(wipe_out_trie_node);
+
+            // write the big chunk of list of trie_node<DIMENSION> *'s at
+            // `temp_children_offset`
+            if (ftell(file) != temp_children_offset) {
+                fseek(file, temp_children_offset, SEEK_SET);
+                fwrite(temp_children, sizeof(trie_node<DIMENSION> *),
+                       1 << level_to_num_children[level], file);
+                fseek(file, 0, SEEK_END);
+            } else
+                fwrite(temp_children, sizeof(trie_node<DIMENSION> *),
+                       1 << level_to_num_children[level], file);
+
+            free(temp_children);
+
+            // populate the trie_node with the list of trie_node<DIMENSION> *
+            temp_node->trie_or_treeblock_ptr_ = (void *)temp_children_offset;
+
+            // write the node at the position node_offset
+            if (ftell(file) != node_offset) {
+                fseek(file, node_offset, SEEK_SET);
+                fwrite(temp_node, sizeof(trie_node<DIMENSION>), 1, file);
+                fseek(file, 0, SEEK_END);
+            } else
+                fwrite(temp_node, sizeof(trie_node<DIMENSION>), 1, file);
+
+            free(temp_node);
+        }
+    }
+
   private:
-    void *trie_or_treeblock_ptr_ = NULL;
-    trie_node<DIMENSION> *parent_trie_node_ = NULL;
+    void *trie_or_treeblock_ptr_ = nullptr;
+    trie_node<DIMENSION> *parent_trie_node_ = nullptr;
     morton_t parent_symbol_ = 0;
 
     // Grant md_trie access to private members.

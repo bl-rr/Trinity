@@ -1,9 +1,7 @@
 #ifndef MD_TRIE_TREE_BLOCK_H
 #define MD_TRIE_TREE_BLOCK_H
 
-#include "compact_ptr.h"
 #include "compressed_bitmap.h"
-#include "point_array.h"
 #include "trie_node.h"
 #include <cmath>
 #include <cstdlib>
@@ -17,6 +15,9 @@ template <dimension_t DIMENSION> class tree_block {
                         trie_node<DIMENSION> *parent_trie_node,
                         compressed_bitmap::compressed_bitmap *dfuds = NULL) {
 
+        // getting rid of the valgrind error, padding after root_depth_ likely
+        memset(this, 0, sizeof(tree_block));
+
         root_depth_ = root_depth;
         node_capacity_ = node_capacity;
         max_depth_ = max_depth;
@@ -28,9 +29,8 @@ template <dimension_t DIMENSION> class tree_block {
                                                               bit_capacity);
         else
             dfuds_ = dfuds;
-        if (parent_trie_node) {
-            parent_combined_ptr_ = parent_trie_node;
-        }
+
+        parent_combined_ptr_ = parent_trie_node;
     }
 
     ~tree_block() {
@@ -1110,16 +1110,139 @@ template <dimension_t DIMENSION> class tree_block {
         return total_size;
     }
 
-  private:
+    /// @brief
+    /// @param file
+    /// @param treeblock_offset where the tree should be written
+    /// @param temp_treeblock a fully zeroed-out tree_block for reuse, it's this
+    ///                       function's responsibility to free it
+    void serialize(FILE *file, uint64_t treeblock_offset,
+                   tree_block<DIMENSION> *temp_treeblock) {
+
+        // this treeblock should not be here
+        assert(pointers_to_offsets_map.find((uint64_t)(this)) ==
+               pointers_to_offsets_map.end());
+
+        // good old start, current_offset is at the next write location
+        pointers_to_offsets_map.insert({(uint64_t)(this), current_offset});
+
+        // populate the previous dummy tree_block with the correct data
+        memcpy(temp_treeblock, this, sizeof(tree_block<DIMENSION>));
+
+        // deal with pointers
+        // 1) parent_combined_ptr_
+        // 2) dfuds_
+        // 3) frontiers_
+
+        /* 1) parent_combined_ptr_ */
+        // should always have a parent_combined_ptr_ already in map
+        temp_treeblock->parent_combined_ptr_ =
+            (void *)(pointers_to_offsets_map.at(
+                (uint64_t)(this->parent_combined_ptr_)));
+
+        /* 2) dfuds_ */
+        if (this->dfuds_) {
+            assert(pointers_to_offsets_map.find((uint64_t)(this->dfuds_)) ==
+                   pointers_to_offsets_map.end());
+
+            // serialize the dfuds
+            temp_treeblock->dfuds_ =
+                (compressed_bitmap::compressed_bitmap *)current_offset;
+
+            this->dfuds_->serialize(file);
+        }
+
+        // current_offset is still at the next writing location of the file
+
+        /* 3) frontiers_ */
+        // need to perform for each frontier if exists
+        if (this->num_frontiers_ != 0) {
+            assert(pointers_to_offsets_map.find((uint64_t)(this->frontiers_)) ==
+                   pointers_to_offsets_map.end());
+            // frontiers_ not found, need to create, a list of frontiers of size
+            // num_frontiers_
+
+            // writing to current_offset, so can assign
+            temp_treeblock->frontiers_ =
+                (frontier_node<DIMENSION> *)current_offset;
+
+            // storing where the frontiers_ are started to be stored
+            uint64_t frontiers_start_offset = current_offset;
+
+            // create wipeout space for frontier_nodes to be inserted later,
+            // increment current_offset accordingly
+            frontier_node<DIMENSION> *temp_frontiers_ =
+                (frontier_node<DIMENSION> *)calloc(
+                    num_frontiers_, sizeof(frontier_node<DIMENSION>));
+
+            fwrite(temp_frontiers_, sizeof(frontier_node<DIMENSION>),
+                   num_frontiers_, file);
+            pointers_to_offsets_map.insert(
+                {(uint64_t)(this->frontiers_), current_offset});
+
+            current_offset += sizeof(frontier_node<DIMENSION>) * num_frontiers_;
+
+            memcpy(temp_frontiers_, this->frontiers_,
+                   sizeof(frontier_node<DIMENSION>) * num_frontiers_);
+
+            // again, current_offset is at the next writing location of the file
+            for (uint16_t i = 0; i < this->num_frontiers_; i++) {
+                // check and process the tree_block pointed by the frontier node
+                assert(pointers_to_offsets_map.find(
+                           (uint64_t)(this->frontiers_[i].pointer_)) ==
+                       pointers_to_offsets_map.end());
+
+                temp_frontiers_[i].pointer_ =
+                    (tree_block<DIMENSION> *)current_offset;
+
+                // serialize the block
+
+                // create a empty tree_block
+                tree_block<DIMENSION> *wipe_out_treeblock =
+                    (tree_block<DIMENSION> *)calloc(
+                        1, sizeof(tree_block<DIMENSION>));
+                fwrite(wipe_out_treeblock, sizeof(tree_block<DIMENSION>), 1,
+                       file);
+                uint64_t wipe_out_treeblock_offset = current_offset;
+                current_offset += sizeof(tree_block<DIMENSION>);
+
+                this->frontiers_[i].pointer_->serialize(
+                    file, wipe_out_treeblock_offset, wipe_out_treeblock);
+            }
+            // write the list of frontiers
+            if (ftell(file) != frontiers_start_offset) {
+                fseek(file, frontiers_start_offset, SEEK_SET);
+                fwrite(temp_frontiers_, sizeof(frontier_node<DIMENSION>),
+                       num_frontiers_, file);
+                fseek(file, 0, SEEK_END);
+            } else {
+                fwrite(temp_frontiers_, sizeof(frontier_node<DIMENSION>),
+                       num_frontiers_, file);
+            }
+            free(temp_frontiers_);
+        }
+
+        // finally I can write my current block
+        if (ftell(file) != treeblock_offset) {
+            fseek(file, treeblock_offset, SEEK_SET);
+            fwrite(temp_treeblock, sizeof(tree_block<DIMENSION>), 1, file);
+            fseek(file, 0, SEEK_END);
+        } else {
+            fwrite(temp_treeblock, sizeof(tree_block<DIMENSION>), 1, file);
+        }
+
+        free(temp_treeblock);
+    }
+
+  protected:
     level_t root_depth_;
     preorder_t num_nodes_;
     preorder_t total_nodes_bits_;
     preorder_t node_capacity_;
-    compressed_bitmap::compressed_bitmap *dfuds_{};
+    compressed_bitmap::compressed_bitmap *dfuds_ = nullptr;
     frontier_node<DIMENSION> *frontiers_ = nullptr;
     preorder_t num_frontiers_ = 0;
 
-    void *parent_combined_ptr_ = NULL;
+    void *parent_combined_ptr_ = nullptr;
     preorder_t treeblock_frontier_num_ = 0;
 };
 

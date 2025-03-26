@@ -16,7 +16,6 @@
 
 #include "data_point.h"
 #include "defs.h"
-#include "point_array.h"
 #include "tree_block.h"
 #include "trie_node.h"
 
@@ -202,6 +201,53 @@ template <dimension_t DIMENSION> class md_trie {
         }
     }
 
+    /// @brief starts to serialize the trie at the `current_offset`,
+    ///        it is caller's responsibility to align the file cursor
+    /// @param file
+    void serialize(FILE *file) {
+
+        // asserting that the trie is not already inserted, each data structure
+        // should only be inserted once
+        assert(pointers_to_offsets_map.find((uint64_t)this) ==
+               pointers_to_offsets_map.end());
+
+        // current_offset should be the location where the trie is written
+        pointers_to_offsets_map.insert({(uint64_t)this, current_offset});
+
+        // create a buffer for easy modification of the trie copy
+        md_trie *temp_trie = (md_trie *)malloc(sizeof(md_trie<DIMENSION>));
+        memcpy(temp_trie, this, sizeof(md_trie<DIMENSION>));
+
+        // create root node offset, after where the trie would live
+        uint64_t root_offset = current_offset + sizeof(md_trie<DIMENSION>);
+        if (this->root_)
+            temp_trie->root_ = (trie_node<DIMENSION> *)(root_offset);
+        else {
+            fwrite(temp_trie, sizeof(md_trie<DIMENSION>), 1, file);
+            free(temp_trie);
+            return;
+        }
+
+        // perform write for normal case
+        // current_offset should always be the next write offset
+        fwrite(temp_trie, sizeof(md_trie<DIMENSION>), 1, file);
+        free(temp_trie);
+
+        current_offset += sizeof(md_trie<DIMENSION>);
+
+        // create a temp buffer and write empty bytes in place of the root node
+        // to be written later
+        trie_node<DIMENSION> *temp_root =
+            (trie_node<DIMENSION> *)calloc(1, sizeof(trie_node<DIMENSION>));
+        fwrite(temp_root, sizeof(trie_node<DIMENSION>), 1, file);
+
+        // now match `current_offset` with FILE CURSOR
+        current_offset += sizeof(trie_node<DIMENSION>);
+
+        // this is fine, the next node is guaranteed to not have been created
+        root_->serialize(file, 0, root_offset, temp_root);
+    }
+
   private:
     // NOTE: we removed p_key_to_treeblock_compact, meaning that we can no
     // longer support duplicate primary keys
@@ -237,6 +283,35 @@ template <dimension_t DIMENSION> class md_trie {
         // Finally, delete the node itself.
         delete node;
     }
+
+    // void serialize_node(trie_node<DIMENSION> *current_trie_node, level_t
+    // level,
+    //                     FILE *file) {
+    //     if (current_trie_node == nullptr) {
+    //         return;
+    //     }
+
+    //     // always write the node itself first
+    //     current_trie_node->serialize(file, level);
+
+    //     // now we decide if we are at the end of the trie
+    //     if (level < trie_depth_) {
+    //         dimension_t num_children = 1 << level_to_num_children[level];
+
+    //         // for each of the valid child, we serialize the child node,
+    //         though
+    //         // it may have already been created
+    //         for (dimension_t i = 0; i < num_children; i++) {
+    //             if (current_trie_node->get_child(i)) {
+    //                 serialize_node(current_trie_node->get_child(i), level +
+    //                 1,
+    //                                file);
+    //             }
+    //         }
+    //     }
+
+    //     // else, we are at the end, and just return
+    // }
 };
 
 #endif // MD_TRIE_MD_TRIE_H

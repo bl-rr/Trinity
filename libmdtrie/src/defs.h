@@ -1,13 +1,12 @@
 #ifndef MD_TRIE_DEFS_H
 #define MD_TRIE_DEFS_H
 
-#include "compact_vector.h"
 #include <assert.h>
 #include <boost/bimap.hpp>
 #include <cinttypes>
-#include <compressed_bitmap.h>
 #include <mutex>
 #include <shared_mutex>
+#include <sys/time.h>
 #include <unordered_map>
 #include <vector>
 
@@ -89,7 +88,6 @@ level_t max_depth_;
  * whether we set the treeblock size to the same value.
  */
 
-bitmap::CompactPtrVector *p_key_to_treeblock_compact;
 device_vector<level_t> dimension_to_num_bits;
 device_vector<level_t> start_dimension_bits;
 bool no_dynamic_sizing = false;
@@ -132,6 +130,38 @@ void create_level_to_num_children(device_vector<level_t> bit_widths,
         level_to_num_children[level] = dimension_left;
     }
 }
+
+/* custom object creations */
+
+// storing the mapping between pointer address in memory and the proposed disk
+// storage offset
+std::unordered_map<uint64_t, uint64_t> pointers_to_offsets_map;
+
+// the last write offset of the file
+uint64_t current_offset = 0;
+
+#define ALIGNMENT 8
+
+void align_offset(FILE *file) {
+    uint64_t incr =
+        (current_offset + ALIGNMENT - 1) & ~(ALIGNMENT - 1) - current_offset;
+    if (!incr)
+        return;
+
+    current_offset += incr;
+
+    // write empty bytes to align the file
+    uint8_t *empty_bytes = (uint8_t *)calloc(1, incr - current_offset);
+    fwrite(empty_bytes, 1, incr - current_offset, file);
+    free(empty_bytes);
+}
+
+uint64_t get_aligned_offset(uint64_t offset) {
+    return (offset + ALIGNMENT - 1) & ~(ALIGNMENT - 1);
+}
+
+// bool root_node_found = false;
+// bool root_parent_combined_ptr_found = false;
 
 // #define USE_LINEAR_SCAN // Possibly disable at microbenchmark
 #endif // MD_TRIE_DEFS_H

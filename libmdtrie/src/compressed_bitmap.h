@@ -167,11 +167,25 @@ class compressed_bitmap {
             data_ = (data_type *)realloc(
                 data_,
                 BITS2BLOCKS(data_size_ + increase_width) * sizeof(data_type));
+
+            memset((char *)data_ + BITS2BLOCKS(data_size_) * sizeof(data_type),
+                   0,
+                   (BITS2BLOCKS(data_size_ + increase_width) -
+                    BITS2BLOCKS(data_size_)) *
+                       sizeof(data_type));
+
             data_size_ += increase_width;
         } else {
             flag_ = (data_type *)realloc(
                 flag_,
                 BITS2BLOCKS(flag_size_ + increase_width) * sizeof(data_type));
+
+            memset((char *)flag_ + BITS2BLOCKS(flag_size_) * sizeof(data_type),
+                   0,
+                   (BITS2BLOCKS(flag_size_ + increase_width) -
+                    BITS2BLOCKS(flag_size_)) *
+                       sizeof(data_type));
+
             flag_size_ += increase_width;
         }
     }
@@ -619,16 +633,74 @@ class compressed_bitmap {
     size_type get_flag_size() { return flag_size_; }
     size_type get_data_size() { return data_size_; }
 
+    // the current start is `current_offset`, just need to write there
+    void serialize(FILE *file) {
+        // good old start
+        pointers_to_offsets_map.insert({(uint64_t)(this), current_offset});
+
+        current_offset += sizeof(compressed_bitmap);
+
+        compressed_bitmap *temp_bitmap =
+            (compressed_bitmap *)malloc(sizeof(compressed_bitmap));
+        memcpy(temp_bitmap, this, sizeof(compressed_bitmap));
+
+        // there's no way the data_ and flag_ are already in the
+        // pointers_to_offsets_map
+        if (data_)
+            assert(pointers_to_offsets_map.find((uint64_t)data_) ==
+                   pointers_to_offsets_map.end());
+
+        if (flag_)
+            assert(pointers_to_offsets_map.find((uint64_t)flag_) ==
+                   pointers_to_offsets_map.end());
+
+        // assert that data_ won't be null when data_size_ > 0 and vice versa
+        // for flag_ and flaog_size_
+        assert((data_size_ == 0) == (data_ == nullptr));
+        assert((flag_size_ == 0) == (flag_ == nullptr));
+
+        // I am writing contiguous any way
+        //     | compressed_bitmap | data_ | flag_ |
+
+        // serialize the data
+        if (data_size_ > 0) {
+            pointers_to_offsets_map.insert({(uint64_t)data_, current_offset});
+
+            temp_bitmap->data_ = (data_type *)(current_offset);
+            current_offset += BITS2BLOCKS(data_size_) * sizeof(data_type);
+        }
+
+        // serialize the flag
+        if (flag_size_ > 0) {
+            pointers_to_offsets_map.insert({(uint64_t)flag_, current_offset});
+
+            temp_bitmap->flag_ = (data_type *)(current_offset);
+            current_offset += BITS2BLOCKS(flag_size_) * sizeof(data_type);
+        }
+
+        // write everything
+        fwrite(temp_bitmap, sizeof(compressed_bitmap), 1, file);
+        free(temp_bitmap);
+
+        if (data_size_ > 0) {
+            fwrite(data_, sizeof(data_type), BITS2BLOCKS(data_size_), file);
+        }
+        if (flag_size_ > 0) {
+            fwrite(flag_, sizeof(data_type), BITS2BLOCKS(flag_size_), file);
+        }
+    }
+
+    data_type *data_ = nullptr;
+    data_type *flag_ = nullptr;
+
   protected:
     // Data members
 
     // storing data: collapased + uncollapsed nodes
-    data_type *data_;
 
     // storing flags: which nodes are collapsed
-    data_type *flag_;
-    size_type data_size_;
-    size_type flag_size_;
+    size_type data_size_ = 0;
+    size_type flag_size_ = 0;
 };
 } // namespace compressed_bitmap
 
