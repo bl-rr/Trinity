@@ -2,101 +2,47 @@
 #include "parser.hpp"
 #include "trie.h"
 #include <climits>
+#include <cstdio>
 #include <fstream>
 #include <sys/time.h>
 #include <unistd.h>
 #include <vector>
+
+#include <fcntl.h>    // open
+#include <sys/mman.h> // mmap, munmap
+#include <sys/stat.h> // fstat
+#include <unistd.h>   // close
 
 #include "clocking_utils.hpp"
 
 #define NUM_DIMENSIONS 8
 
 int main(int argc, char *argv[]) {
-    if (argc < 4) {
-        std::cerr << "Usage: " << argv[0]
-                  << " <total_count> <query_file_id> <query_itertions>"
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <*.bin> <query_file_id>"
                   << std::endl;
         return 1;
     }
 
-    std::cout << "[Starting benchmark...]" << std::endl;
-
-    if (std::stoi(argv[1]) > 9994222)
-        argv[1] = "9994222";
-
-    if (std::stoi(argv[2]) > 9994222)
-        argv[2] = "9994222";
-
-    std::cout << "total_count: " << argv[1] << std::endl;
-    std::cout << "query_file_id: " << argv[2] << std::endl;
-    std::cout << "query_iterations: " << argv[3] << std::endl;
-
-    // Total count from command line
-    int total_count = std::stoi(argv[1]);
-    if (total_count <= 0) {
-        std::cerr << "Error: n must be a positive integer." << std::endl;
+    // 1. open the file
+    int fd;
+    if ((fd = open(argv[1], O_RDONLY)) == -1) {
+        perror("open");
         return 1;
     }
 
-    // Number of queries from command line
-    string file_name = "/home/leo/gpu-trie/data/embedding_table/"
-                       "emb_l_19_weight_pca_8d_int32.csv";
-    std::ifstream file(file_name);
-    if (!file.is_open()) {
-        std::cerr << "Error: Unable to open " << file_name << std::endl;
+    // 2. obtain the file size
+    struct stat sb;
+    if (fstat(fd, &sb) == -1) {
+        perror("fstat");
         return 1;
     }
+    size_t filesize = sb.st_size;
 
-    string start_ranges_file =
-        "/home/leo/gpu-trie/data/embedding_table/range_queries/range_start_" +
-        string(argv[2]) + ".csv";
-    std::ifstream start_ranges_file_stream(start_ranges_file);
-    if (!start_ranges_file_stream.is_open()) {
-        std::cerr << "Error: Unable to open " << start_ranges_file << std::endl;
-        return 1;
-    }
-
-    string end_ranges_file =
-        "/home/leo/gpu-trie/data/embedding_table/range_queries/range_end_" +
-        string(argv[2]) + ".csv";
-    std::ifstream end_ranges_file_stream(end_ranges_file);
-    if (!end_ranges_file_stream.is_open()) {
-        std::cerr << "Error: Unable to open " << end_ranges_file << std::endl;
-        return 1;
-    }
-
-    string og_selected_file =
-        "/home/leo/gpu-trie/data/embedding_table/selected_points/selected_" +
-        string(argv[2]) + ".csv";
-    std::ifstream og_selected_file_stream(og_selected_file);
-    if (!og_selected_file_stream.is_open()) {
-        std::cerr << "Error: Unable to open " << og_selected_file << std::endl;
-        return 1;
-    }
-
-    int query_iterations = std::stoi(argv[3]);
-    int query_count = stoi(argv[2]);
-
-    // buffer storing all points in a flattened manner, size = total_count *
-    // NUM_DIMENSIONS
-    std::vector<int32_t> buffer;
-    buffer.reserve(total_count * NUM_DIMENSIONS);
-
-    // read each line until n = total_count rows have been processed
-    std::string line;
-    int row = 0;
-    while (row++ < total_count && std::getline(file, line)) {
-        std::vector<int32_t> point = parse_line_real_data(line);
-        for (int i = 0; i < NUM_DIMENSIONS; i++) {
-            buffer.push_back(point[i]);
-        }
-    }
-
-    trie_depth = 6;
-    max_depth = 32;
-    no_dynamic_sizing = true;
-
-    /* ---------- Initialization ------------ */
+    // init
+    max_depth_ = 32;
+    trie_depth_ = 6;
+    max_tree_nodes_ = 512;
 
     device_vector<level_t> bit_widths(8, (level_t)32);
     device_vector<level_t> start_bits(8, (level_t)0);
@@ -119,34 +65,48 @@ int main(int argc, char *argv[]) {
         std::cout << (int)e << ", ";
     std::cout << "\t" << std::endl;
 
-    md_trie<NUM_DIMENSIONS> mdtrie(max_depth, trie_depth, max_tree_node);
+    // 3. mmap the file
+    md_trie<NUM_DIMENSIONS> *mdtrie = (md_trie<NUM_DIMENSIONS> *)mmap(
+        nullptr, filesize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    if (mdtrie == MAP_FAILED) {
+        perror("mmap");
+        close(fd);
+        return 1;
+    }
+    close(fd); // fd no longer needed after mmap
 
-    init_cpu_frequency();
+    uint64_t base_addr = (uint64_t)(mdtrie);
 
-    /* ----------- INSERT ----------- */
-    unsigned long long start, end, cumulative = 0;
-    int idx = 0;
+    // 4. deserialize
+    mdtrie->deserialize(base_addr);
 
-    for (int primary_key = 0; primary_key < total_count; primary_key++) {
-        data_point<NUM_DIMENSIONS> point;
-        for (dimension_t i = 0; i < NUM_DIMENSIONS; ++i) {
-            point.set_coordinate(i, buffer[idx++]);
-        }
-        start = get_cpu_cycles_start();
+    // 5. query
 
-        mdtrie.insert_trie(&point, primary_key);
-        end = get_cpu_cycles_end();
-        cumulative += end - start;
+    // set up the query
+    string start_ranges_file =
+        "/home/leo/gpu-trie/data/embedding_table/range_queries/range_start_" +
+        string(argv[2]) + ".csv";
+    std::ifstream start_ranges_file_stream(start_ranges_file);
+    if (!start_ranges_file_stream.is_open()) {
+        std::cerr << "Error: Unable to open " << start_ranges_file << std::endl;
+        return 1;
     }
 
-    std::cout << "\t" << "Insertion Latency: "
-              << cpu_cycles_to_ns(cumulative) / total_count << " ns"
-              << std::endl;
+    string end_ranges_file =
+        "/home/leo/gpu-trie/data/embedding_table/range_queries/range_end_" +
+        string(argv[2]) + ".csv";
+    std::ifstream end_ranges_file_stream(end_ranges_file);
+    if (!end_ranges_file_stream.is_open()) {
+        std::cerr << "Error: Unable to open " << end_ranges_file << std::endl;
+        return 1;
+    }
+
+    int query_count = std::stoi(argv[2]);
 
     /* ---------- WARM UP ------------ */
 
     // querying the entire range for 1000 times
-    for (int c = 0; c < 1000; c++) {
+    for (int c = 0; c < 10; c++) {
         data_point<NUM_DIMENSIONS> start_range;
         data_point<NUM_DIMENSIONS> end_range;
         device_vector<int32_t> found_points;
@@ -154,8 +114,10 @@ int main(int argc, char *argv[]) {
             start_range.set_coordinate(i, 0);
             end_range.set_coordinate(i, INT32_MAX);
         }
-        mdtrie.range_search_trie(&start_range, &end_range, mdtrie.root(), 0,
-                                 found_points);
+        mdtrie->range_search_trie(&start_range, &end_range, mdtrie->root(), 0,
+                                  found_points);
+        std::cout << "found_points.size(): "
+                  << found_points.size() / NUM_DIMENSIONS << std::endl;
     }
 
     /* ---------- REAL RANGE QUERY ------------ */
@@ -180,7 +142,8 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    cumulative = 0;
+    unsigned long long start, end, cumulative = 0;
+    int query_iterations = 1;
     int ranges_idx = 0;
     int total_found_points = 0;
     for (int iter = 0; iter < query_iterations; iter++) {
@@ -195,8 +158,8 @@ int main(int argc, char *argv[]) {
             }
 
             start = get_cpu_cycles_start();
-            mdtrie.range_search_trie(&start_range, &end_range, mdtrie.root(), 0,
-                                     found_points);
+            mdtrie->range_search_trie(&start_range, &end_range, mdtrie->root(),
+                                      0, found_points);
             end = get_cpu_cycles_end();
 
             // Coordinates are flattened into one vector.
@@ -218,6 +181,9 @@ int main(int argc, char *argv[]) {
               << " ns" << std::endl;
 
     std::cout << "[Finished benchmark...]" << std::endl;
+
+    // 6. Cleanup
+    munmap(mdtrie, filesize);
 
     return 0;
 }

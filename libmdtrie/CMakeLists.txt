@@ -26,7 +26,10 @@ add_executable(b
 add_executable(serialize
         bench/serialize.cpp)
 
+add_executable(deserialize
+        bench/deserialize.cpp)
+
 # target_link_libraries(microbench ${MDTRIE_LIBS})
 # target_link_libraries(example ${MDTRIE_LIBS})
 # target_link_libraries(bench ${MDTRIE_LIBS})
-target_link_libraries(b ${MDTRIE_LIBS})
+# target_link_libraries(b ${MDTRIE_LIBS})

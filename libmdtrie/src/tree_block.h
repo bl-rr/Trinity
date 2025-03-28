@@ -1233,6 +1233,35 @@ template <dimension_t DIMENSION> class tree_block {
         free(temp_treeblock);
     }
 
+    void deserialize(uint64_t base_addr) {
+        if (parent_combined_ptr_) {
+            // update the pointer to the correct location
+            parent_combined_ptr_ =
+                (void *)(base_addr + (uint64_t)parent_combined_ptr_);
+        }
+
+        if (dfuds_) {
+            // update the pointer to the correct location
+            dfuds_ = (compressed_bitmap::compressed_bitmap *)(base_addr +
+                                                              (uint64_t)dfuds_);
+            dfuds_->deserialize(base_addr);
+        }
+
+        if (num_frontiers_) {
+            // update the pointer to the correct location
+            frontiers_ =
+                (frontier_node<DIMENSION> *)(base_addr + (uint64_t)frontiers_);
+
+            for (uint16_t i = 0; i < num_frontiers_; i++) {
+                assert(frontiers_[i].pointer_);
+                frontiers_[i].pointer_ =
+                    (tree_block<DIMENSION> *)(base_addr +
+                                              (uint64_t)frontiers_[i].pointer_);
+                frontiers_[i].pointer_->deserialize(base_addr);
+            }
+        }
+    }
+
   protected:
     level_t root_depth_;
     preorder_t num_nodes_;

@@ -248,6 +248,13 @@ template <dimension_t DIMENSION> class md_trie {
         root_->serialize(file, 0, root_offset, temp_root);
     }
 
+    void deserialize(uint64_t base_addr) {
+        if (root_) {
+            root_ = (trie_node<DIMENSION> *)(base_addr + (uint64_t)root_);
+            root_->deserialize(0, base_addr);
+        }
+    }
+
   private:
     // NOTE: we removed p_key_to_treeblock_compact, meaning that we can no
     // longer support duplicate primary keys

@@ -12,23 +12,6 @@
 
 #define NUM_DIMENSIONS 8
 
-std::vector<int32_t> parse_line_real_data(const std::string &line) {
-    std::vector<int32_t> result;
-    std::stringstream ss(line);
-    std::string value;
-
-    while (std::getline(ss, value, ',')) {
-        try {
-            result.push_back(std::stoul(value)); // Convert to int32_t
-        } catch (const std::exception &e) {
-            std::cerr << "Error parsing integer: " << value << " - " << e.what()
-                      << std::endl;
-        }
-    }
-
-    return result;
-}
-
 int main(int argc, char *argv[]) {
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " <total_count> <query_file_id>"

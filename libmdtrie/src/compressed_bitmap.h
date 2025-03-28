@@ -690,6 +690,19 @@ class compressed_bitmap {
         }
     }
 
+    void deserialize(uint64_t base_addr) {
+        assert((data_size_ == 0) == (data_ == nullptr));
+        assert((flag_size_ == 0) == (flag_ == nullptr));
+
+        if (data_size_ > 0) {
+            data_ = (data_type *)(base_addr + (uint64_t)data_);
+        }
+
+        if (flag_size_ > 0) {
+            flag_ = (data_type *)(base_addr + (uint64_t)flag_);
+        }
+    }
+
     data_type *data_ = nullptr;
     data_type *flag_ = nullptr;
 

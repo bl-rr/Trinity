@@ -216,6 +216,38 @@ template <dimension_t DIMENSION> class trie_node {
         }
     }
 
+    void deserialize(level_t level, uint64_t base_addr) {
+        if (parent_trie_node_) {
+            assert(level);
+            parent_trie_node_ =
+                (trie_node<DIMENSION> *)(base_addr +
+                                         (uint64_t)parent_trie_node_);
+        }
+
+        if (trie_or_treeblock_ptr_) {
+            // update the pointer to the correct location
+            trie_or_treeblock_ptr_ =
+                (void *)(base_addr + (uint64_t)trie_or_treeblock_ptr_);
+
+            if (level == trie_depth_) {
+                // if leaf, then should be a block
+                get_block()->deserialize(base_addr);
+            } else {
+                // if internal, then should be a list of trie_node<DIMENSION> *
+                trie_node<DIMENSION> **children =
+                    (trie_node<DIMENSION> **)trie_or_treeblock_ptr_;
+                for (int i = 0; i < (1 << level_to_num_children[level]); i++) {
+                    if (children[i]) {
+                        children[i] =
+                            (trie_node<DIMENSION> *)(base_addr +
+                                                     (uint64_t)children[i]);
+                        children[i]->deserialize(level + 1, base_addr);
+                    }
+                }
+            }
+        }
+    }
+
   private:
     void *trie_or_treeblock_ptr_ = nullptr;
     trie_node<DIMENSION> *parent_trie_node_ = nullptr;
