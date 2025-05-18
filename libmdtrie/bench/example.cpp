@@ -1,6 +1,3 @@
-#include "benchmark.hpp"
-#include "common.hpp"
-#include "parser.hpp"
 #include "trie.h"
 #include <climits>
 #include <fstream>
@@ -9,50 +6,60 @@
 #include <vector>
 #include <random>
 
-// Function to generate a random integer in the range [min, max]
-int random_int(int min, int max)
-{
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_int_distribution<> distrib(min, max);
-    return distrib(gen);
-}
+#include <iostream>
+#include <sstream>
+#include <string>
+
+#define NUM_DIMENSION 16
 
 int main()
 {
-    dimension_t num_dimensions = 9;
-    max_tree_node = 1024;
-    int total_count = 10000000;
-    trie_depth = 6;
-    max_depth = 32;
+
+    std::string filename = "/users/blrr/data/full-climate_fever-sentences.csv";
+    std::ifstream infile(filename);
+    std::string line;
+    int total_count = 24544931;
+
+    dimension_t num_dimensions = NUM_DIMENSION;
+    preorder_t max_tree_node = 128;
+    level_t trie_depth = 1;
+    level_t max_depth = 64;
     no_dynamic_sizing = true;
-    md_trie<9> mdtrie(max_depth, trie_depth, max_tree_node);
     bitmap::CompactPtrVector primary_key_to_treeblock_mapping(total_count);
 
     /* ---------- Initialization ------------ */
     std::vector<level_t> bit_widths = {
-        32, 32, 32, 32, 32, 32, 32, 32, 32};
+        64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64};
     std::vector<level_t> start_bits = {
-        0, 0, 0, 0, 0, 0, 0, 0, 0};
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     create_level_to_num_children(bit_widths, start_bits, max_depth);
+
+    md_trie<NUM_DIMENSION> mdtrie(max_depth, trie_depth, max_tree_node);
 
     /* ----------- INSERT ----------- */
     TimeStamp start = 0, cumulative = 0;
     int num_inserted = 0;
+    int primary_key = 0;
 
-    for (int primary_key = 0; primary_key < total_count; primary_key++)
+    for (int primary_key = 0; primary_key < total_count && std::getline(infile, line); primary_key++)
     {
-        num_inserted ++;
-        if (num_inserted % (total_count / 10) == 0) {
-            std::cout << "Inserting: " << num_inserted << " out of " << total_count << std::endl;
-        }
-        data_point<9> point;
+        std::stringstream ss(line);
+
+        num_inserted++;
+        // if (num_inserted % (1000) == 0)
+        // {
+        std::cout << "Inserting: " << num_inserted << " out of " << total_count << std::endl;
+        // }
+        data_point<NUM_DIMENSION> point;
         // For lookup correctness checking.
         point.set_coordinate(0, primary_key);
-        for (dimension_t i = 1; i < num_dimensions; ++i)
+
+        std::string cell;
+        for (dimension_t i = 1; i < num_dimensions && std::getline(ss, cell, ','); ++i)
         {
-            point.set_coordinate(i, random_int(1, (int)1 << 16));
+            point.set_coordinate(i, std::stoull(cell));
         }
+
         start = GetTimestamp();
         mdtrie.insert_trie(&point, primary_key, &primary_key_to_treeblock_mapping);
         cumulative += GetTimestamp() - start;
@@ -64,13 +71,14 @@ int main()
     int num_lookup = 0;
     for (int primary_key = 0; primary_key < total_count; primary_key++)
     {
-        num_lookup ++;
-        if (num_lookup % (total_count / 10) == 0) {
+        num_lookup++;
+        if (num_lookup % (total_count / 10) == 0)
+        {
             std::cout << "Looking up: " << num_lookup << " out of " << total_count << std::endl;
         }
 
         start = GetTimestamp();
-        data_point<9> *pt = mdtrie.lookup_trie(primary_key, &primary_key_to_treeblock_mapping);
+        data_point<NUM_DIMENSION> *pt = mdtrie.lookup_trie(primary_key, &primary_key_to_treeblock_mapping);
         if ((int)pt->get_coordinate(0) != primary_key)
         {
             std::cerr << "Wrong point retrieved!" << std::endl;
@@ -85,9 +93,9 @@ int main()
     std::cout << "Creating range queries that return every point. " << std::endl;
     for (int c = 0; c < num_queries; c++)
     {
-        data_point<9> start_range;
-        data_point<9> end_range;
-        std::vector<int> found_points;
+        data_point<NUM_DIMENSION> start_range;
+        data_point<NUM_DIMENSION> end_range;
+        std::vector<uint64_t> found_points;
         /* We used the first coordinate to be the primary key. */
         start_range.set_coordinate(0, 0);
         end_range.set_coordinate(0, total_count);
@@ -105,7 +113,9 @@ int main()
             std::cerr << "Wrong number of points found!" << std::endl;
             std::cerr << "found: " << (int)(found_points.size() / num_dimensions) << std::endl;
             std::cerr << "total count: " << total_count << std::endl;
-        } else {
+        }
+        else
+        {
             std::cout << "Query - " << c << ", found: " << (int)(found_points.size() / num_dimensions) << ", expected: " << total_count << std::endl;
         }
         cumulative += GetTimestamp() - start;

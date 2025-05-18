@@ -198,7 +198,7 @@ public:
                          data_point<DIMENSION> *end_range,
                          trie_node<DIMENSION> *current_trie_node,
                          level_t level,
-                         std::vector<int32_t> &found_points)
+                         std::vector<uint64_t> &found_points)
   {
     if (level == trie_depth_)
     {

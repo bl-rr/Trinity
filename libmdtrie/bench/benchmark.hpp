@@ -19,7 +19,7 @@ public:
   void insert(std::string data_addr,
               std::string outfile_name,
               point_t total_points_count,
-              std::vector<int32_t> (*parse_line)(std::string line))
+              std::vector<uint64_t> (*parse_line)(std::string line))
   {
 
     std::ifstream infile(data_addr);
@@ -41,7 +41,7 @@ public:
         continue;
       }
 
-      std::vector<int32_t> vect = parse_line(line);
+      std::vector<uint64_t> vect = parse_line(line);
       for (dimension_t i = 0; i < DIMENSION; i++)
       {
         leaf_point.set_coordinate(i, vect[i]);
@@ -105,7 +105,7 @@ public:
     for (int i = 0; i < QUERY_NUM; i++)
     {
 
-      std::vector<int32_t> found_points;
+      std::vector<uint64_t> found_points;
       data_point<DIMENSION> start_range;
       data_point<DIMENSION> end_range;
 
@@ -139,7 +139,7 @@ public:
     while (i < QUERY_NUM * 10)
     {
 
-      std::vector<int32_t> found_points;
+      std::vector<uint64_t> found_points;
       data_point<DIMENSION> start_range;
       data_point<DIMENSION> end_range;
 

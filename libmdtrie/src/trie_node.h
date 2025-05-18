@@ -20,6 +20,7 @@ public:
     }
   }
 
+  // get child of pointer-based child
   inline trie_node<DIMENSION> *get_child(morton_t symbol)
   {
     auto trie_ptr = (trie_node<DIMENSION> **)trie_or_treeblock_ptr_;

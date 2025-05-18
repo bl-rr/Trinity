@@ -687,7 +687,7 @@ public:
       return;
     }
 
-    else if (num_nodes_ + (max_depth_ - level) - 1 <= node_capacity_)
+    else if (num_nodes_ + (max_depth_ - level) - 1 <= node_capacity_) // the entire sub-nodes can fit in curret block without block extension
     {
       morton_t current_symbol = leaf_point->leaf_to_symbol(level);
       node = skip_children_subtree(node,
@@ -779,7 +779,7 @@ public:
           current_primary, primary_key, p_key_to_treeblock_compact);
       return;
     }
-    else if (num_nodes_ + (max_depth_ - level) - 1 <= max_tree_nodes)
+    else if (num_nodes_ + (max_depth_ - level) - 1 <= max_tree_nodes) // can fit in current block, but current block need extension
     {
       uint64_t total_extra_bits = 0;
       for (unsigned int i = level; i < max_depth_; i++)
@@ -808,7 +808,7 @@ public:
              p_key_to_treeblock_compact);
       return;
     }
-    else
+    else // need block extension
     {
       num_treeblock_expand++;
       preorder_t subtree_size, selected_node_depth;
@@ -824,6 +824,13 @@ public:
                                                 selected_primary_index,
                                                 node_to_primary,
                                                 node_to_depth);
+
+      // if (selected_node == 0)
+      // {
+      //   // pick the next available node
+      //   selected_node = num_nodes_;
+      //   selected_node_pos = total_nodes_bits_;
+      // }
 
       preorder_t orig_selected_node = selected_node;
       preorder_t orig_selected_node_pos = selected_node_pos;
@@ -1603,12 +1610,12 @@ public:
     return coordinates;
   }
 
-  std::vector<int32_t> node_path_to_coordinates_vect(
+  std::vector<uint64_t> node_path_to_coordinates_vect(
       std::vector<morton_t> &node_path,
       dimension_t dimension) const
   {
     // Will be free-ed in the benchmark code
-    std::vector<int32_t> ret_vect(dimension, 0);
+    std::vector<uint64_t> ret_vect(dimension, 0);
 
     for (level_t i = 0; i < max_depth_; i++)
     {
@@ -1642,7 +1649,7 @@ public:
                               preorder_t prev_node_pos,
                               preorder_t current_frontier,
                               preorder_t current_primary,
-                              std::vector<int32_t> &found_points)
+                              std::vector<uint64_t> &found_points)
   {
 
     if (level == max_depth_)

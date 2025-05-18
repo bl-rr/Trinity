@@ -11,7 +11,7 @@
 namespace bitmap
 {
 
-  template <typename T, uint32_t sampling_rate = 32>
+  template <typename T, uint64_t sampling_rate = 64>
   class DeltaEncodedArray
   {
   public:
@@ -139,10 +139,10 @@ namespace bitmap
     uint16_t sum(const block_type i) const { return (prefixsum_[i] & 0xFFFF); }
 
   private:
-    uint32_t prefixsum_[65536];
+    uint64_t prefixsum_[65536];
   } elias_gamma_prefix_table;
 
-  template <typename T, uint32_t sampling_rate = 32>
+  template <typename T, uint64_t sampling_rate = 64>
   class EliasGammaDeltaEncodedArray : public DeltaEncodedArray<T, sampling_rate>
   {
   public:

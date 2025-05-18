@@ -36,6 +36,11 @@ public:
 
   inline n_leaves_t read_primary() { return primary_key_; }
 
+  // Generate the corresponding symbol for the leaf node at a specific level
+  //
+  //  For each dimension
+  //    if the level (whichever bit) is in range of number of bits
+  //      set the bit in the symbol
   inline morton_t leaf_to_symbol(level_t level)
   {
 
@@ -136,9 +141,9 @@ public:
     }
   }
 
-  std::vector<int32_t> generate_vector()
+  std::vector<uint64_t> generate_vector()
   {
-    std::vector<int32_t> return_pt(DIMENSION);
+    std::vector<uint64_t> return_pt(DIMENSION);
 
     for (unsigned i = 0; i < DIMENSION; i++)
     {

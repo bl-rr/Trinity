@@ -76,26 +76,26 @@ float selectivity_lower = 0.0005;
 
 /* [QUANTITY, EXTENDEDPRICE, DISCOUNT, TAX, SHIPDATE, COMMITDATE, RECEIPTDATE,
  * TOTALPRICE, ORDERDATE] */
-std::vector<int32_t> tpch_max_values = {50, 10494950, 10,
+std::vector<uint64_t> tpch_max_values = {50, 10494950, 10,
                                         8, 19981201, 19981031,
                                         19981231, 58063825, 19980802};
-std::vector<int32_t> tpch_min_values = {1, 90000, 0,
+std::vector<uint64_t> tpch_min_values = {1, 90000, 0,
                                         0, 19920102, 19920131,
                                         19920103, 81300, 19920101};
 
 /* [QUANTITY, EXTENDEDPRICE, DISCOUNT, TAX, SHIPDATE, COMMITDATE, RECEIPTDATE,
  * TOTALPRICE, ORDERDATE] */
-std::vector<int32_t> github_max_values = {7451541, 737170, 262926, 354850,
+std::vector<uint64_t> github_max_values = {7451541, 737170, 262926, 354850,
                                           379379, 3097263, 703341, 8745,
                                           20201206, 20201206};
-std::vector<int32_t> github_min_values = {1, 1, 0, 0, 0,
+std::vector<uint64_t> github_min_values = {1, 1, 0, 0, 0,
                                           0, 0, 0, 20110211, 20110211};
 
-std::vector<int32_t> nyc_max_values = {20160630, 20221220, 899, 898,
+std::vector<uint64_t> nyc_max_values = {20160630, 20221220, 899, 898,
                                        899, 898, 255, 198623000,
                                        21474808, 1000, 1312, 3950589,
                                        21474836, 138, 21474830};
-std::vector<int32_t> nyc_min_values = {20090101, 19700101, 0, 0, 0, 0, 0, 0,
+std::vector<uint64_t> nyc_min_values = {20090101, 19700101, 0, 0, 0, 0, 0, 0,
                                        0, 0, 0, 0, 0, 0, 0};
 
 int gen_rand(int start, int end)
@@ -146,7 +146,7 @@ void use_nyc_setting(int dimensions, int _total_points_count)
   start_bits.resize(dimensions);
   bit_widths.resize(dimensions);
 
-  trie_depth = 6;
+  level_t trie_depth = 6;
   max_depth = 28;
   no_dynamic_sizing = true;
 
@@ -299,27 +299,27 @@ void get_query_nyc(std::string line,
     std::string end_range_str;
     std::getline(ss, end_range_str, ',');
 
-    dimension_t index = std::stoul(index_str);
+    dimension_t index = std::stoull(index_str);
     if (start_range_str != "-1" && index < DIMENSION)
     {
       if (index >= 2 && index <= 5)
       {
         float num_float = std::stof(start_range_str);
         start_range->set_coordinate(index,
-                                    static_cast<int32_t>(num_float * 10));
+                                    static_cast<uint64_t>(num_float * 10));
       }
       else
-        start_range->set_coordinate(index, std::stoul(start_range_str));
+        start_range->set_coordinate(index, std::stoull(start_range_str));
     }
     if (end_range_str != "-1" && index < DIMENSION)
     {
       if (index >= 2 && index <= 5)
       {
         float num_float = std::stof(end_range_str);
-        end_range->set_coordinate(index, static_cast<int32_t>(num_float * 10));
+        end_range->set_coordinate(index, static_cast<uint64_t>(num_float * 10));
       }
       else
-        end_range->set_coordinate(index, std::stoul(end_range_str));
+        end_range->set_coordinate(index, std::stoull(end_range_str));
     }
   }
 
@@ -352,17 +352,17 @@ void get_query_github(std::string line,
     std::string end_range_str;
     std::getline(ss, end_range_str, ',');
 
-    dimension_t index = std::stoul(index_str);
+    dimension_t index = std::stoull(index_str);
     if (index > 10)
       index -= 3;
 
     if (start_range_str != "-1" && index < DIMENSION)
     {
-      start_range->set_coordinate(index, std::stoul(start_range_str));
+      start_range->set_coordinate(index, std::stoull(start_range_str));
     }
     if (end_range_str != "-1" && index < DIMENSION)
     {
-      end_range->set_coordinate(index, std::stoul(end_range_str));
+      end_range->set_coordinate(index, std::stoull(end_range_str));
     }
   }
 
@@ -401,15 +401,15 @@ void get_query_tpch(std::string line,
     std::string end_range_str;
     std::getline(ss, end_range_str, ',');
 
-    if (start_range_str != "-1" && std::stoul(index_str) < DIMENSION)
+    if (start_range_str != "-1" && std::stoull(index_str) < DIMENSION)
     {
-      start_range->set_coordinate(std::stoul(index_str),
-                                  std::stoul(start_range_str));
+      start_range->set_coordinate(std::stoull(index_str),
+                                  std::stoull(start_range_str));
     }
-    if (end_range_str != "-1" && std::stoul(index_str) < DIMENSION)
+    if (end_range_str != "-1" && std::stoull(index_str) < DIMENSION)
     {
-      end_range->set_coordinate(std::stoul(index_str),
-                                std::stoul(end_range_str));
+      end_range->set_coordinate(std::stoull(index_str),
+                                std::stoull(end_range_str));
     }
   }
 

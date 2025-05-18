@@ -560,7 +560,7 @@ namespace bitmap
       else if (flag(idx) == 1)
       {
         std::vector<uint64_t> *vect_ptr = get_vector_pointer(idx);
-        return /*sizeof(*vect_ptr) + */ sizeof(uint32_t) /*primary key size*/ *
+        return /*sizeof(*vect_ptr) + */ sizeof(uint64_t) /*primary key size*/ *
                vect_ptr->size() /*+ sizeof(compact_ptr)*/;
       }
       else
@@ -602,7 +602,7 @@ namespace bitmap
       }
     }
 
-    uint64_t get(pos_type idx, uint32_t index)
+    uint64_t get(pos_type idx, uint64_t index)
     {
 
       if (flag(idx) == 0)

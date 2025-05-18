@@ -10,6 +10,7 @@
 #include <shared_mutex>
 #include <vector>
 #include <unordered_map>
+#include <map>
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -82,7 +83,7 @@ GetTimestamp()
 n_leaves_t total_points_count = 0;
 int discount_factor = 1;
 level_t trie_depth_;
-morton_t level_to_num_children[32] = {0};
+morton_t level_to_num_children[64] = {0};
 preorder_t max_tree_nodes_ = 512;
 level_t max_depth_;
 
@@ -105,7 +106,7 @@ n_leaves_t treeblock_ctr = 0;
 
 std::mutex cache_lock;
 
-std::unordered_map<int32_t, int32_t> client_to_server;
+std::unordered_map<uint64_t, uint64_t> client_to_server;
 bool enable_client_cache_pkey_mapping = false;
 bool REUSE_RANGE_SEARCH_CHILD = true;
 
