@@ -21,11 +21,15 @@ int random_int(int min, int max)
 int main()
 {
     dimension_t num_dimensions = 9;
-    max_tree_node = 1024;
-    int total_count = 10000000;
+    max_tree_node = 512;
+    int total_count = 20000;
     trie_depth = 6;
     max_depth = 32;
-    no_dynamic_sizing = true;
+
+    max_depth_ = 32;
+    trie_depth_ = 6;
+    max_tree_nodes_ = 512;
+
     bitmap::CompactPtrVector primary_key_to_treeblock_mapping(total_count);
 
     /* ---------- Initialization ------------ */
@@ -35,52 +39,59 @@ int main()
         0, 0, 0, 0, 0, 0, 0, 0, 0};
     create_level_to_num_children(bit_widths, start_bits, max_depth);
 
-    md_trie<9> mdtrie(max_depth, trie_depth, max_tree_node);
-
-    /* ----------- INSERT ----------- */
+    /* ----------- INSERT via deserialization ----------- */
     TimeStamp start = 0, cumulative = 0;
-    int num_inserted = 0;
 
-    for (int primary_key = 0; primary_key < total_count; primary_key++)
+    int fd;
+    if ((fd = open("trie.bin", O_RDONLY)) == -1)
     {
-        num_inserted++;
-        if (num_inserted % (total_count / 10) == 0)
-        {
-            std::cout << "Inserting: " << num_inserted << " out of " << total_count << std::endl;
-        }
-        data_point<9> point;
-        // For lookup correctness checking.
-        point.set_coordinate(0, primary_key);
-        for (dimension_t i = 1; i < num_dimensions; ++i)
-        {
-            point.set_coordinate(i, random_int(1, (int)1 << 16));
-        }
-        start = GetTimestamp();
-        mdtrie.insert_trie(&point, primary_key, &primary_key_to_treeblock_mapping);
-        cumulative += GetTimestamp() - start;
+        perror("open");
+        return 1;
     }
-    std::cout << "Insertion Latency per point: " << (float)cumulative / total_count << " us" << std::endl;
+
+    struct stat sb;
+    if (fstat(fd, &sb) == -1)
+    {
+        perror("fstat");
+        return 1;
+    }
+    size_t filesize = sb.st_size;
+
+    md_trie<9> *mdtrie = (md_trie<9> *)mmap(
+        nullptr, filesize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    if (mdtrie == MAP_FAILED)
+    {
+        perror("mmap");
+        close(fd);
+        return 1;
+    }
+    close(fd); // fd no longer needed after mmap
+
+    uint64_t base_addr = (uint64_t)(mdtrie);
+
+    // 4. deserialize
+    mdtrie->deserialize(base_addr);
 
     /* ---------- LOOKUP ------------ */
-    cumulative = 0;
-    int num_lookup = 0;
-    for (int primary_key = 0; primary_key < total_count; primary_key++)
-    {
-        num_lookup++;
-        if (num_lookup % (total_count / 10) == 0)
-        {
-            std::cout << "Looking up: " << num_lookup << " out of " << total_count << std::endl;
-        }
+    // cumulative = 0;
+    // int num_lookup = 0;
+    // for (int primary_key = 0; primary_key < total_count; primary_key++)
+    // {
+    //     num_lookup++;
+    //     if (num_lookup % (total_count / 10) == 0)
+    //     {
+    //         std::cout << "Looking up: " << num_lookup << " out of " << total_count << std::endl;
+    //     }
 
-        start = GetTimestamp();
-        data_point<9> *pt = mdtrie.lookup_trie(primary_key, &primary_key_to_treeblock_mapping);
-        if ((int)pt->get_coordinate(0) != primary_key)
-        {
-            std::cerr << "Wrong point retrieved!" << std::endl;
-        }
-        cumulative += GetTimestamp() - start;
-    }
-    std::cout << "Lookup Latency per point: " << (float)cumulative / total_count << " us" << std::endl;
+    //     start = GetTimestamp();
+    //     data_point<9> *pt = mdtrie->lookup_trie(primary_key, &primary_key_to_treeblock_mapping);
+    //     if ((int)pt->get_coordinate(0) != primary_key)
+    //     {
+    //         std::cerr << "Wrong point retrieved!" << std::endl;
+    //     }
+    //     cumulative += GetTimestamp() - start;
+    // }
+    // std::cout << "Lookup Latency per point: " << (float)cumulative / total_count << " us" << std::endl;
 
     /* ---------- RANGE QUERY ------------ */
     cumulative = 0;
@@ -101,7 +112,7 @@ int main()
         }
 
         start = GetTimestamp();
-        mdtrie.range_search_trie(&start_range, &end_range, mdtrie.root(), 0, found_points);
+        mdtrie->range_search_trie(&start_range, &end_range, mdtrie->root(), 0, found_points);
         // Coordinates are flattened into one vector.
         if ((int)(found_points.size() / num_dimensions) != total_count)
         {

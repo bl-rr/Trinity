@@ -10,6 +10,8 @@
 #include <tuple>
 #include <vector>
 
+#include <sstream>
+
 using namespace std;
 
 // Parse one line from TPC-H file.

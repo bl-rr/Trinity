@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <vector>
 
+#include <sstream>
+
 #define TPCH_MICRO_SIZE 250000000   // 250M
 #define GITHUB_MICRO_SIZE 200000000 // 200M
 #define NYC_MICRO_SIZE 200000000    // 200M

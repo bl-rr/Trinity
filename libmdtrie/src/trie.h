@@ -253,6 +253,64 @@ public:
     }
   }
 
+  /// @brief starts to serialize the trie at the `current_offset`,
+  ///        it is caller's responsibility to align the file cursor
+  /// @param file
+  void serialize(FILE *file)
+  {
+
+    // asserting that the trie is not already inserted, each data structure
+    // should only be inserted once
+    assert(pointers_to_offsets_map.find((uint64_t)this) ==
+           pointers_to_offsets_map.end());
+
+    // current_offset should be the location where the trie is written
+    pointers_to_offsets_map.insert({(uint64_t)this, current_offset});
+
+    // create a buffer for easy modification of the trie copy
+    md_trie *temp_trie = (md_trie *)malloc(sizeof(md_trie<DIMENSION>));
+    memcpy(temp_trie, this, sizeof(md_trie<DIMENSION>));
+
+    // create root node offset, after where the trie would live
+    uint64_t root_offset = current_offset + sizeof(md_trie<DIMENSION>);
+    if (this->root_)
+      temp_trie->root_ = (trie_node<DIMENSION> *)(root_offset);
+    else
+    {
+      fwrite(temp_trie, sizeof(md_trie<DIMENSION>), 1, file);
+      free(temp_trie);
+      return;
+    }
+
+    // perform write for normal case
+    // current_offset should always be the next write offset
+    fwrite(temp_trie, sizeof(md_trie<DIMENSION>), 1, file);
+    free(temp_trie);
+
+    current_offset += sizeof(md_trie<DIMENSION>);
+
+    // create a temp buffer and write empty bytes in place of the root node
+    // to be written later
+    trie_node<DIMENSION> *temp_root =
+        (trie_node<DIMENSION> *)calloc(1, sizeof(trie_node<DIMENSION>));
+    fwrite(temp_root, sizeof(trie_node<DIMENSION>), 1, file);
+
+    // now match `current_offset` with FILE CURSOR
+    current_offset += sizeof(trie_node<DIMENSION>);
+
+    // this is fine, the next node is guaranteed to not have been created
+    root_->serialize(file, 0, root_offset, temp_root);
+  }
+
+  void deserialize(uint64_t base_addr)
+  {
+    if (root_)
+    {
+      root_ = (trie_node<DIMENSION> *)(base_addr + (uint64_t)root_);
+      root_->deserialize(0, base_addr);
+    }
+  }
+
 private:
   trie_node<DIMENSION> *root_ = nullptr;
   level_t max_depth_;

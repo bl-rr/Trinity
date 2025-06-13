@@ -3,7 +3,7 @@
 
 #include "compact_vector.h"
 #include <assert.h>
-#include <boost/bimap.hpp>
+// #include <boost/bimap.hpp>
 #include <cinttypes>
 #include <compressed_bitmap.h>
 #include <mutex>
@@ -17,6 +17,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include <map>
 
 typedef uint64_t preorder_t;
 typedef uint64_t n_leaves_t;
@@ -140,6 +142,13 @@ void create_level_to_num_children(std::vector<level_t> bit_widths,
     level_to_num_children[level] = dimension_left;
   }
 }
+
+// storing the mapping between pointer address in memory and the proposed disk
+// storage offset
+std::unordered_map<uint64_t, uint64_t> pointers_to_offsets_map;
+
+// the last write offset of the file
+uint64_t current_offset = 0;
 
 // #define USE_LINEAR_SCAN // Possibly disable at microbenchmark
 #endif // MD_TRIE_DEFS_H

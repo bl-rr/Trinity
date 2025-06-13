@@ -722,6 +722,84 @@ namespace compressed_bitmap
       ClearWidth(start_node, end_node + 1 - start_node, false);
     }
 
+    // the current start is `current_offset`, just need to write there
+    void serialize(FILE *file)
+    {
+      // good old start
+      pointers_to_offsets_map.insert({(uint64_t)(this), current_offset});
+
+      current_offset += sizeof(compressed_bitmap);
+
+      compressed_bitmap *temp_bitmap =
+          (compressed_bitmap *)malloc(sizeof(compressed_bitmap));
+      memcpy(temp_bitmap, this, sizeof(compressed_bitmap));
+
+      // there's no way the data_ and flag_ are already in the
+      // pointers_to_offsets_map
+      if (data_)
+        assert(pointers_to_offsets_map.find((uint64_t)data_) ==
+               pointers_to_offsets_map.end());
+
+      if (flag_)
+        assert(pointers_to_offsets_map.find((uint64_t)flag_) ==
+               pointers_to_offsets_map.end());
+
+      // assert that data_ won't be null when data_size_ > 0 and vice versa
+      // for flag_ and flaog_size_
+      assert((data_size_ == 0) == (data_ == nullptr));
+      assert((flag_size_ == 0) == (flag_ == nullptr));
+
+      // I am writing contiguous any way
+      //     | compressed_bitmap | data_ | flag_ |
+
+      // serialize the data
+      if (data_size_ > 0)
+      {
+        pointers_to_offsets_map.insert({(uint64_t)data_, current_offset});
+
+        temp_bitmap->data_ = (data_type *)(current_offset);
+        current_offset += BITS2BLOCKS(data_size_) * sizeof(data_type);
+      }
+
+      // serialize the flag
+      if (flag_size_ > 0)
+      {
+        pointers_to_offsets_map.insert({(uint64_t)flag_, current_offset});
+
+        temp_bitmap->flag_ = (data_type *)(current_offset);
+        current_offset += BITS2BLOCKS(flag_size_) * sizeof(data_type);
+      }
+
+      // write everything
+      fwrite(temp_bitmap, sizeof(compressed_bitmap), 1, file);
+      free(temp_bitmap);
+
+      if (data_size_ > 0)
+      {
+        fwrite(data_, sizeof(data_type), BITS2BLOCKS(data_size_), file);
+      }
+      if (flag_size_ > 0)
+      {
+        fwrite(flag_, sizeof(data_type), BITS2BLOCKS(flag_size_), file);
+      }
+    }
+
+    void deserialize(uint64_t base_addr)
+    {
+      assert((data_size_ == 0) == (data_ == nullptr));
+      assert((flag_size_ == 0) == (flag_ == nullptr));
+
+      if (data_size_ > 0)
+      {
+        data_ = (data_type *)(base_addr + (uint64_t)data_);
+      }
+
+      if (flag_size_ > 0)
+      {
+        flag_ = (data_type *)(base_addr + (uint64_t)flag_);
+      }
+    }
+
     size_type get_flag_size() { return flag_size_; }
     size_type get_data_size() { return data_size_; }
 
