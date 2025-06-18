@@ -28,6 +28,7 @@ public:
     node_capacity_ = node_capacity;
     max_depth_ = max_depth;
     max_tree_nodes_ = max_tree_nodes;
+    max_tree_nodes_cur_block = max_tree_nodes;
     num_nodes_ = num_nodes;
     total_nodes_bits_ = bit_capacity;
     if (!dfuds)
@@ -79,16 +80,15 @@ public:
                             preorder_t *node_to_primary,
                             preorder_t *node_to_depth)
   {
-
     // index -> Number of children & preorder
-    node_info index_to_node[4096];
+    node_info index_to_node[num_nodes_];
 
     // index -> size of subtree & preorder
-    subtree_info index_to_subtree[4096];
+    subtree_info index_to_subtree[num_nodes_];
     num_primary = 0;
 
     // Index -> depth of the node
-    preorder_t index_to_depth[4096];
+    preorder_t index_to_depth[num_nodes_];
 
     //  Corresponds to index_to_node, index_to_subtree, index_to_depth
     preorder_t node_stack_top = 0, subtree_stack_top = 0, depth_stack_top = 0;
@@ -179,10 +179,6 @@ public:
     preorder_t diff = (preorder_t)-1;
     auto leftmost = (preorder_t)-1;
 
-    if (subtree_stack_top == 1)
-    {
-      // std::cout << "Only one subtree found, returning it." << std::endl;
-    }
     for (preorder_t i = 0; i < subtree_stack_top; i++)
     {
       auto subtree_size_at_i = (preorder_t)index_to_subtree[i].subtree_size_;
@@ -627,12 +623,7 @@ public:
     */
 
     // disabling dynamic resizing for now
-    max_tree_nodes = max_tree_nodes_;
-
-    // for (int i = 0; i < num_frontiers_; i++)
-    // {
-    //   // std::cout << "frontier[" << i << "].preorder_ = " << get_preorder(i) << std::endl;
-    // }
+    max_tree_nodes = max_tree_nodes_cur_block;
 
     if (frontiers_ != nullptr && current_frontier < num_frontiers_ &&
         node == get_preorder(current_frontier))
@@ -808,8 +799,9 @@ public:
           current_primary, primary_key, p_key_to_treeblock_compact);
       return;
     }
-    else if (num_nodes_ + (max_depth_ - level) - 1 <= max_tree_nodes) // can fit in current block, but current block need extension
+    else if (num_nodes_ + (max_depth_ - level) - 1 <= max_tree_nodes_cur_block) // can fit in current block, but current block need extension
     {
+    block_extension:
       uint64_t total_extra_bits = 0;
       for (unsigned int i = level; i < max_depth_; i++)
       {
@@ -837,14 +829,15 @@ public:
              p_key_to_treeblock_compact);
       return;
     }
-    else // need block extension
+    else // need block splitting
     {
       num_treeblock_expand++;
       preorder_t subtree_size, selected_node_depth;
       preorder_t selected_node_pos = 0;
       preorder_t num_primary = 0, selected_primary_index = 0;
-      preorder_t node_to_primary[4096] = {0};
-      preorder_t node_to_depth[4096] = {0};
+
+      preorder_t node_to_primary[num_nodes_] = {0};
+      preorder_t node_to_depth[num_nodes_] = {0};
 
       preorder_t selected_node = select_subtree(subtree_size,
                                                 selected_node_depth,
@@ -854,205 +847,16 @@ public:
                                                 node_to_primary,
                                                 node_to_depth);
 
-      // if (selected_node == 0)
-      // {
-      // printout all
-      // std::cout
-      // << "ERROR: selected_node == 0, subtree_size = " << subtree_size
-      // << ", selected_node_depth = " << selected_node_depth
-      // << ", selected_node_pos = " << selected_node_pos
-      // << ", num_primary = " << num_primary
-      // << ", selected_primary_index = " << selected_primary_index
-      // << std::endl;
-      // }
+      if (selected_node == 0)
+      {
+        // now we need to update the size class, until these fit
+        do
+        {
+          max_tree_nodes_cur_block *= 2;
+        } while ((num_nodes_ + (max_depth_ - level) - 1 > max_tree_nodes_cur_block));
 
-      // if (selected_node == 0)
-
-      //   level_t split_level = (max_depth_ + root_depth_) / 2; // = 32 for max_depth_=64, root_depth_=1
-
-      //   uint64_t total_flag_bits = 0;
-      //   for (level_t d = root_depth_; d < split_level; ++d)
-      //   {
-      //     total_flag_bits += level_to_num_children[d];
-      //   }
-
-      //   tree_block<DIMENSION> *blockA = this;
-      //   preorder_t cur_node = 0;
-      //   preorder_t cur_node_pos = 0;
-      //   preorder_t cur_frontier = 0;
-      //   preorder_t cur_primary = 0;
-      //   level_t cur_level = root_depth_; // = 1
-
-      //   for (; cur_level < split_level; ++cur_level)
-      //   {
-      //     morton_t symbol = leaf_point->leaf_to_symbol(cur_level);
-
-      //     if (!blockA->dfuds_->has_symbol(
-      //             cur_node,
-      //             cur_node_pos,
-      //             symbol,
-      //             level_to_num_children[cur_level]))
-      //     {
-      //       blockA->dfuds_->set_symbol(
-      //           cur_node,
-      //           cur_node_pos,
-      //           symbol,
-      //           /* isNewChild = */ true,
-      //           level_to_num_children[cur_level]);
-      //     }
-
-      //     preorder_t next_node = blockA->child(
-      //         blockA,
-      //         cur_node,
-      //         cur_node_pos,
-      //         symbol,
-      //         cur_level,
-      //         cur_frontier,
-      //         cur_primary);
-      //     if (next_node == null_node)
-      //     {
-      //       // In the unlikely event child() returns −1, reset to root of this block:
-      //       cur_node = 0;
-      //       cur_node_pos = 0;
-      //       cur_frontier = 0;
-      //       cur_primary = 0;
-      //     }
-      //     else
-      //     {
-      //       cur_node = next_node;
-      //     }
-      //   }
-      //   blockA->insert_remaining(
-      //       leaf_point,
-      //       split_level, // “Start at depth = 32 →”
-      //       primary_key,
-      //       p_key_to_treeblock_compact);
-
-      //   // Return immediately so we don’t run the rest of insert(...) here.
-      //   return;
-      // }
-
-      // if (selected_node == 0)
-      // {
-      //   // Case: can't split — fallback to growing with a new empty block
-      //   auto *new_dfuds = new compressed_bitmap::compressed_bitmap(
-      //       1, /* initially empty but holds root */
-      //       total_nodes_bits_);
-
-      //   preorder_t frontier;
-      //   for (frontier = 0; frontier < num_frontiers_; frontier++)
-      //     if (get_preorder(frontier) > selected_node)
-      //       break;
-
-      //   preorder_t frontier_selected_node = frontier;
-      //   preorder_t insertion_node = node;
-      //   preorder_t insertion_node_pos = node_pos;
-      //   // std::cout << "insertion_node: " << insertion_node << " insertion_node_pos: " << insertion_node_pos << std::endl;
-
-      //   bool insertion_in_new_block = false;
-      //   bool is_in_root = false;
-
-      //   frontier_node<DIMENSION> *new_pointer_array = nullptr;
-      //   if (num_frontiers_ > 0)
-      //   {
-      //     new_pointer_array = (frontier_node<DIMENSION> *)malloc(
-      //         sizeof(frontier_node<DIMENSION>) * (num_frontiers_));
-      //   }
-      //   preorder_t current_frontier_new_block = 0;
-      //   preorder_t current_primary_new_block = 0;
-      //   preorder_t subtree_bits = 0;
-
-      //   new_pointer_array[0].preorder_ = 0;
-      //   new_pointer_array[0].pointer_ = get_pointer(frontier);
-
-      //   // maybe need to do something here
-
-      //   auto *new_block = new tree_block<DIMENSION>(
-      //       root_depth_, // or current insertion depth
-      //       0,
-      //       0,
-      //       0,
-      //       max_depth_,
-      //       max_tree_nodes_,
-      //       NULL,
-      //       new_dfuds);
-
-      //   // // std::cout << "frontiers_ before realloc: " << (void *)frontiers_ << std::endl;
-      //   // Determine insert position
-      //   // preorder_t frontier_selected_node = 0;
-      //   // for (; frontier_selected_node < num_frontiers_; frontier_selected_node++)
-      //   //   if (get_preorder(frontier_selected_node) > node)
-      //   //     break;
-
-      //   // Grow frontier array
-      //   frontiers_ = (frontier_node<DIMENSION> *)realloc(
-      //       frontiers_, sizeof(frontier_node<DIMENSION>) * (num_frontiers_ + 1));
-
-      //   // std::cerr << "[DEBUG] current frontiers before shift:";
-      //   // for (preorder_t i = 0; i < num_frontiers_; ++i)
-      //   // {
-      //   //   std::cerr << " (pre=" << get_preorder(i)
-      //   //             << ", ptr=" << get_pointer(i) << ")";
-      //   // }
-      //   // std::cerr << "\n→ Inserting at index = " << frontier_selected_node
-      //   //           << " with preorder = " << selected_node << "\n";
-
-      //   // Insert new block
-      //   for (preorder_t j = num_frontiers_; j > frontier_selected_node; --j)
-      //   {
-      //     set_preorder(j, get_preorder(j - 1));
-      //     set_pointer(j, get_pointer(j - 1));
-      //   }
-      //   set_preorder(frontier_selected_node, 0);
-      //   set_pointer(frontier_selected_node, new_block);
-      //   num_frontiers_++;
-
-      //   std::cerr << "[DEBUG] frontiers after shift+insert:";
-      //   for (preorder_t i = 0; i < num_frontiers_; ++i)
-      //   {
-      //     std::cerr << " (pre=" << get_preorder(i)
-      //               << ", ptr=" << get_pointer(i) << ")";
-      //   }
-      //   std::cerr << "\n";
-
-      //   new_block->insert(0, 0, leaf_point, level, 0, 0, primary_key, p_key_to_treeblock_compact);
-
-      //   // if (selected_node < num_nodes_)
-      //   // {
-
-      //   //   if (selected_node <= node)
-      //   //   {
-      //   //     insertion_node = node - selected_node + orig_selected_node;
-      //   //     insertion_node_pos =
-      //   //         node_pos - selected_node_pos + orig_selected_node_pos;
-      //   //   }
-      //   //   total_nodes_bits_ =
-      //   //       total_nodes_bits_ - selected_node_pos + orig_selected_node_pos;
-      //   //   dfuds_->shift_forward(selected_node,
-      //   //                         selected_node_pos,
-      //   //                         orig_selected_node,
-      //   //                         orig_selected_node_pos);
-      //   // }
-      //   // else if (selected_node >= num_nodes_)
-      //   // {
-
-      //   //   dfuds_->bulk_clear_node(orig_selected_node,
-      //   //                           orig_selected_node_pos,
-      //   //                           selected_node,
-      //   //                           selected_node_pos);
-      //   //   total_nodes_bits_ -= selected_node_pos - orig_selected_node_pos;
-      //   // }
-      //   return;
-      // }
-
-      // previous_selected = selected_node;
-
-      // if (selected_node == 0)
-      // {
-      //   // pick the next available node
-      //   selected_node = num_nodes_;
-      //   selected_node_pos = total_nodes_bits_;
-      // }
+        goto block_extension;
+      }
 
       preorder_t orig_selected_node = selected_node;
       preorder_t orig_selected_node_pos = selected_node_pos;
@@ -1390,7 +1194,6 @@ public:
       }
       level++;
     }
-
     insert(current_node,
            current_node_pos,
            leaf_point,
@@ -1469,16 +1272,16 @@ public:
       return;
     }
 
-    preorder_t stack[64] = {};
-    preorder_t path[64] = {};
-    uint64_t symbol[64];
-    level_t sTop_to_level[64] = {};
+    preorder_t stack[max_depth_] = {};
+    preorder_t path[max_depth_] = {};
+    uint64_t symbol[max_depth_];
+    level_t sTop_to_level[max_depth_] = {};
 
-    for (uint16_t i = 0; i < 64; i++)
+    for (uint16_t i = 0; i < max_depth_; i++)
     {
       symbol[i] = -1;
     }
-    size_t node_positions[2048];
+    size_t node_positions[num_nodes_];
     node_positions[0] = 0;
     preorder_t current_frontier = 0;
     int sTop = 0;
@@ -1627,16 +1430,16 @@ public:
                                      std::vector<morton_t> &node_path)
   {
 
-    preorder_t stack[64] = {};
-    preorder_t path[64] = {};
-    int symbol[64];
-    level_t sTop_to_level[64] = {};
+    preorder_t stack[max_depth_] = {};
+    preorder_t path[max_depth_] = {};
+    int symbol[max_depth_];
+    level_t sTop_to_level[max_depth_] = {};
 
-    for (uint16_t i = 0; i < 64; i++)
+    for (uint16_t i = 0; i < max_depth_; i++)
     {
       symbol[i] = -1;
     }
-    size_t node_positions[2048];
+    size_t node_positions[num_nodes_];
     node_positions[0] = 0;
     int sTop = 0;
     preorder_t top_node = 0;
@@ -2099,6 +1902,7 @@ private:
   preorder_t num_nodes_;
   preorder_t total_nodes_bits_;
   preorder_t node_capacity_;
+  preorder_t max_tree_nodes_cur_block;
   compressed_bitmap::compressed_bitmap *dfuds_{};
   frontier_node<DIMENSION> *frontiers_ = nullptr;
   preorder_t num_frontiers_ = 0;

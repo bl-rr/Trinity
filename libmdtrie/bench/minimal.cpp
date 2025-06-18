@@ -50,16 +50,12 @@ std::size_t get_line_count_shell(const std::string &filename)
 
 int main()
 {
-
-    // std::string filename = "/home/wuyue/Desktop/lbh/gpu-mdtrie/data/full-climate_fever-sentences.csv";
-    std::string filename = "/home/wuyue/Desktop/lbh/gpu-mdtrie/data/morton_solver/sorted_output.csv";
+    std::string filename = "/home/wuyue/Desktop/lbh/gpu-mdtrie/trinityfork1/libmdtrie/minimal.csv";
     // std::string filename = "../minimal.csv";
     std::ifstream infile(filename);
     std::string line;
 
     size_t total_count = get_line_count_shell(filename);
-    // size_t total_count = 600000;
-
     std::cout << "Total count: " << total_count << std::endl;
 
     dimension_t num_dimensions = NUM_DIMENSION;
@@ -83,15 +79,29 @@ int main()
     int num_inserted = 0;
     int primary_key = 0;
 
+    // std::vector<int> indices = {
+    //     262, 263, 265, 266, 268, 269, 270, 271, 272, 273,
+    //     275, 276, 277, 278, 279, 280, 283, 284, 285, 286,
+    //     287, 289, 290, 291, 292, 293, 294, 295, 296, 297,
+    //     298, 299, 300, 301, 302, 303, 304, 305, 306, 307,
+    //     309, 310, 311, 312, 313, 314, 315, 316, 317, 320,
+    //     321, 322, 323, 324, 325, 326, 327, 328, 334, 335,
+    //     336, 337, 338, 340, 341, 342};
+
     for (int primary_key = 0; primary_key < total_count && std::getline(infile, line); primary_key++)
+    // for (int i : indices)
     {
         std::stringstream ss(line);
 
         num_inserted++;
-        if (num_inserted % (1000) == 0)
-        {
-            std::cout << "Inserting: " << primary_key << " out of " << total_count << std::endl;
-        }
+        // if (num_inserted % (1000) == 0)
+        // {
+
+        // if (primary_key != 0 && primary_key != 343)
+        //     continue;
+
+        std::cout << "Inserting: " << primary_key << " out of " << total_count << std::endl;
+        // }
         data_point<NUM_DIMENSION> point;
         // For lookup correctness checking.
         point.set_coordinate(0, primary_key);
@@ -111,16 +121,16 @@ int main()
     }
     std::cout << "Insertion Latency per point: " << (float)cumulative / total_count << " us" << std::endl;
 
-    /* ---------- LOOKUP ------------ */
+    // /* ---------- LOOKUP ------------ */
     cumulative = 0;
     int num_lookup = 0;
     for (int primary_key = 0; primary_key < total_count; primary_key++)
     {
         num_lookup++;
-        if (num_lookup % (total_count / 10) == 0)
-        {
-            std::cout << "Looking up: " << num_lookup << " out of " << total_count << std::endl;
-        }
+        // if (num_lookup % (total_count / 10) == 0)
+        // {
+        std::cout << "Looking up: " << num_lookup << " out of " << total_count << std::endl;
+        // }
 
         start = GetTimestamp();
         data_point<NUM_DIMENSION> *pt = mdtrie.lookup_trie(primary_key, &primary_key_to_treeblock_mapping);
@@ -132,7 +142,7 @@ int main()
     }
     std::cout << "Lookup Latency per point: " << (float)cumulative / total_count << " us" << std::endl;
 
-    /* ---------- RANGE QUERY ------------ */
+    // /* ---------- RANGE QUERY ------------ */
     cumulative = 0;
     int num_queries = 3;
     std::cout << "Creating range queries that return every point. " << std::endl;
@@ -147,7 +157,7 @@ int main()
         for (dimension_t i = 1; i < num_dimensions; i++)
         {
             start_range.set_coordinate(i, 0);
-            end_range.set_coordinate(i, (int)(-1));
+            end_range.set_coordinate(i, (uint64_t)(-1));
         }
 
         start = GetTimestamp();
@@ -165,6 +175,6 @@ int main()
         }
         cumulative += GetTimestamp() - start;
     }
-    std::cout << "Per-query Latency: " << (cumulative / 1000.0) / num_queries << " ms" << std::endl;
+    // std::cout << "Per-query Latency: " << (cumulative / 1000.0) / num_queries << " ms" << std::endl;
     return 0;
 }

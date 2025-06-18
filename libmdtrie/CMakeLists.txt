@@ -2,7 +2,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 add_compile_options("-mbmi2")
 
-add_compile_options("-g")
+add_compile_options("-O3")
 
 add_library(mdtrie INTERFACE)
 target_include_directories(mdtrie INTERFACE src/)
@@ -16,6 +16,10 @@ add_executable(example
 add_executable(fail
         bench/fail.cpp)
 
+add_executable(minimal
+        bench/minimal.cpp)
+
 # target_link_libraries(microbench ${MDTRIE_LIBS})
 target_link_libraries(example ${MDTRIE_LIBS})
 target_link_libraries(fail ${MDTRIE_LIBS})
+target_link_libraries(minimal ${MDTRIE_LIBS})
