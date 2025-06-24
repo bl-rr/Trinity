@@ -12,6 +12,9 @@ add_executable(microbench
 add_executable(example
         bench/example.cpp)
 
+add_executable(disk_example
+        bench/disk_example.cpp)
+
 add_executable(serialize
         bench/serialize.cpp)
 
@@ -20,5 +23,6 @@ add_executable(deserialize
 
 target_link_libraries(microbench ${MDTRIE_LIBS})
 target_link_libraries(example ${MDTRIE_LIBS})
+target_link_libraries(disk_example ${MDTRIE_LIBS})
 target_link_libraries(serialize ${MDTRIE_LIBS})
 target_link_libraries(deserialize ${MDTRIE_LIBS})

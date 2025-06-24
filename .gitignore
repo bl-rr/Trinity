@@ -98,3 +98,6 @@ results/*
 plots/*
 datasets/*
 baselines/*
+
+# added
+.archive/

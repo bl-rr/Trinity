@@ -2,6 +2,7 @@
 #define MD_TRIE_DEFS_H
 
 #include "compact_vector.h"
+#include "disk_compact_vector.h"
 #include <assert.h>
 // #include <boost/bimap.hpp>
 #include <cinttypes>
@@ -34,6 +35,9 @@ template <dimension_t DIMENSION>
 class tree_block;
 
 template <dimension_t DIMENSION>
+class disk_tree_block;
+
+template <dimension_t DIMENSION>
 class data_point;
 
 /**
@@ -60,6 +64,13 @@ struct frontier_node
 {
   preorder_t preorder_;
   tree_block<DIMENSION> *pointer_;
+};
+
+template <dimension_t DIMENSION>
+struct disk_frontier_node
+{
+  preorder_t preorder_;
+  disk_tree_block<DIMENSION> *pointer_;
 };
 
 typedef unsigned long long int TimeStamp;

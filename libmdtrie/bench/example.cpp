@@ -21,8 +21,8 @@ int random_int(int min, int max)
 int main()
 {
     dimension_t num_dimensions = 9;
-    max_tree_node = 1024;
-    int total_count = 10000000;
+    max_tree_node = 512;
+    int total_count = 10000;
     trie_depth = 6;
     max_depth = 32;
     no_dynamic_sizing = true;

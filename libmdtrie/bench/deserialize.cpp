@@ -1,7 +1,7 @@
 #include "benchmark.hpp"
 #include "common.hpp"
 #include "parser.hpp"
-#include "trie.h"
+#include "disk_trie.h"
 #include <climits>
 #include <fstream>
 #include <sys/time.h>
@@ -57,9 +57,9 @@ int main()
     }
     size_t filesize = sb.st_size;
 
-    md_trie<9> *mdtrie = (md_trie<9> *)mmap(
+    disk_md_trie<9> *disk_mdtrie = (disk_md_trie<9> *)mmap(
         nullptr, filesize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-    if (mdtrie == MAP_FAILED)
+    if (disk_mdtrie == MAP_FAILED)
     {
         perror("mmap");
         close(fd);
@@ -67,10 +67,10 @@ int main()
     }
     close(fd); // fd no longer needed after mmap
 
-    uint64_t base_addr = (uint64_t)(mdtrie);
+    uint64_t base = (uint64_t)(disk_mdtrie);
 
     // 4. deserialize
-    mdtrie->deserialize(base_addr);
+    // mdtrie->deserialize(base_addr);
 
     /* ---------- LOOKUP ------------ */
     // cumulative = 0;
@@ -112,7 +112,7 @@ int main()
         }
 
         start = GetTimestamp();
-        mdtrie->range_search_trie(&start_range, &end_range, mdtrie->root(), 0, found_points);
+        disk_mdtrie->disk_range_search_trie(&start_range, &end_range, disk_mdtrie->root(base), 0, found_points, base);
         // Coordinates are flattened into one vector.
         if ((int)(found_points.size() / num_dimensions) != total_count)
         {
