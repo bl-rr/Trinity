@@ -20,17 +20,17 @@ int random_int(int min, int max)
 
 int main()
 {
+
+    /* ---------- Settings ------------ */
     dimension_t num_dimensions = 9;
-    max_tree_node = 512;
-    int total_count = 20000;
+    max_tree_node = 1024;
+    int total_count = 1000000;
     trie_depth = 6;
     max_depth = 32;
 
     max_depth_ = 32;
     trie_depth_ = 6;
     max_tree_nodes_ = 512;
-
-    bitmap::CompactPtrVector primary_key_to_treeblock_mapping(total_count);
 
     /* ---------- Initialization ------------ */
     std::vector<level_t> bit_widths = {
@@ -43,7 +43,7 @@ int main()
     TimeStamp start = 0, cumulative = 0;
 
     int fd;
-    if ((fd = open("trie.bin", O_RDONLY)) == -1)
+    if ((fd = open("/home/wuyue/Desktop/lbh/gpu-mdtrie/disk-trinity/libmdtrie/build/trie.bin", O_RDWR)) == -1)
     {
         perror("open");
         return 1;
@@ -57,41 +57,56 @@ int main()
     }
     size_t filesize = sb.st_size;
 
-    disk_md_trie<9> *disk_mdtrie = (disk_md_trie<9> *)mmap(
-        nullptr, filesize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-    if (disk_mdtrie == MAP_FAILED)
+    void *file_start = mmap(
+        nullptr, filesize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+    madvise(file_start, filesize, MADV_RANDOM);
+    if (file_start == MAP_FAILED)
     {
         perror("mmap");
         close(fd);
         return 1;
-    }
-    close(fd); // fd no longer needed after mmap
+    };
 
-    uint64_t base = (uint64_t)(disk_mdtrie);
+    uint64_t cpv_offset = *((size_t *)file_start);
 
-    // 4. deserialize
-    // mdtrie->deserialize(base_addr);
+    disk_md_trie<9> *disk_mdtrie = (disk_md_trie<9> *)((uint64_t)file_start + sizeof(size_t));
+    disk_bitmap::disk_CompactPtrVector *primary_key_to_treeblock_mapping =
+        (disk_bitmap::disk_CompactPtrVector *)((uint64_t)file_start + cpv_offset);
+
+    uint64_t base = (uint64_t)(file_start);
 
     /* ---------- LOOKUP ------------ */
-    // cumulative = 0;
-    // int num_lookup = 0;
-    // for (int primary_key = 0; primary_key < total_count; primary_key++)
-    // {
-    //     num_lookup++;
-    //     if (num_lookup % (total_count / 10) == 0)
-    //     {
-    //         std::cout << "Looking up: " << num_lookup << " out of " << total_count << std::endl;
-    //     }
+    cumulative = 0;
+    int num_lookup = 0;
+    for (int primary_key = 0; primary_key < total_count; primary_key++)
+    {
+        num_lookup++;
+        if (num_lookup % (total_count / 10) == 0)
+        {
+            std::cout << "Looking up: " << num_lookup << " out of " << total_count << std::endl;
+        }
 
-    //     start = GetTimestamp();
-    //     data_point<9> *pt = mdtrie->lookup_trie(primary_key, &primary_key_to_treeblock_mapping);
-    //     if ((int)pt->get_coordinate(0) != primary_key)
-    //     {
-    //         std::cerr << "Wrong point retrieved!" << std::endl;
-    //     }
-    //     cumulative += GetTimestamp() - start;
-    // }
-    // std::cout << "Lookup Latency per point: " << (float)cumulative / total_count << " us" << std::endl;
+        madvise(file_start, filesize, MADV_DONTNEED);
+
+        start = GetTimestamp();
+        data_point<9> *pt = disk_mdtrie
+                                ->disk_lookup_trie(primary_key, primary_key_to_treeblock_mapping, base);
+        cumulative += GetTimestamp() - start;
+
+        if ((int)pt->get_coordinate(0) != primary_key)
+        {
+            std::cerr << "Wrong point retrieved!" << std::endl;
+        }
+        // print out the point for validation
+        std::cout << "Gottent Point: ";
+        for (dimension_t i = 0; i < num_dimensions; i++)
+        {
+            std::cout << pt->get_coordinate(i) << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "Lookup Latency per point: " << (float)cumulative / total_count << " us" << std::endl;
 
     /* ---------- RANGE QUERY ------------ */
     cumulative = 0;
@@ -111,6 +126,7 @@ int main()
             end_range.set_coordinate(i, (int)(1 << 16));
         }
 
+        madvise(file_start, filesize, MADV_DONTNEED);
         start = GetTimestamp();
         disk_mdtrie->disk_range_search_trie(&start_range, &end_range, disk_mdtrie->root(base), 0, found_points, base);
         // Coordinates are flattened into one vector.

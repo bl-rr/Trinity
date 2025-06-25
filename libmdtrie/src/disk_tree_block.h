@@ -7,6 +7,7 @@
 #include "disk_trie_node.h"
 #include <cmath>
 #include <sys/time.h>
+#include "disk_compact_vector.h"
 
 template <dimension_t DIMENSION>
 class disk_tree_block
@@ -31,10 +32,10 @@ public:
 
   // deleted: mutators
 
-  std::vector<disk_bits::disk_compact_ptr> get_primary_key_list()
+  disk_std_vector<disk_bits::disk_compact_ptr> get_primary_key_list()
   {
     // todo: this should be a disk vector
-    return primary_key_list;
+    return disk_primary_key_list;
   }
 
   preorder_t select_subtree(preorder_t &subtree_size,
@@ -892,7 +893,7 @@ public:
           bool found = false;
           for (preorder_t p = current_primary; p < new_current_primary; p++)
           {
-            if (primary_key_list[p].check_if_present(primary_key, base)) // todo: need to restore check_if_present...
+            if (disk_primary_key_list.get(p, base).check_if_present(primary_key, base))
             {
               found = true;
               parent_symbol =
@@ -1076,8 +1077,8 @@ public:
         current_primary++;
       }
 
-      // n_leaves_t list_size = primary_key_list[current_primary].size();
-      n_leaves_t list_size = 1;
+      n_leaves_t list_size = disk_primary_key_list.get(current_primary, base).size(base);
+      // n_leaves_t list_size = 1;
       for (n_leaves_t i = 0; i < list_size; i++)
       {
         for (dimension_t j = 0; j < DIMENSION; j++)
@@ -1240,8 +1241,7 @@ private:
 
   void *disk_parent_combined_ptr_ = NULL;
   preorder_t treeblock_frontier_num_ = 0;
-  std::vector<disk_bits::disk_compact_ptr> primary_key_list; // todo: deal with std::vector
-  // this is the missing piece, need to basically read out value, insert the offset, and then copy
+  disk_std_vector<disk_bits::disk_compact_ptr> disk_primary_key_list;
 };
 
 #endif // MD_TRIE_TREE_BLOCK_H

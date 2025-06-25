@@ -218,6 +218,42 @@ namespace bitmap
       }
     }
 
+    void serialize(FILE *file)
+    {
+      Bitmap *bitmap = new Bitmap();
+      uint64_t bitmap_location = current_offset;
+      current_offset += sizeof(Bitmap);
+
+      memcpy(bitmap, this, sizeof(Bitmap));
+      uint64_t bitmap_data = current_offset;
+      current_offset += BITS2BLOCKS(size_) * sizeof(data_type);
+      bitmap->data_ = (data_type *)bitmap_data;
+
+      if (ftell(file) != bitmap_location)
+      {
+        fseek(file, bitmap_location, SEEK_SET);
+        fwrite(bitmap, sizeof(Bitmap), 1, file);
+        fseek(file, 0, SEEK_END);
+      }
+      else
+      {
+        fwrite(bitmap, sizeof(Bitmap), 1, file);
+      }
+
+      if (ftell(file) != bitmap_data)
+      {
+        fseek(file, bitmap_data, SEEK_SET);
+        fwrite(data_, sizeof(data_type), BITS2BLOCKS(size_), file);
+        fseek(file, 0, SEEK_END);
+      }
+      else
+      {
+        fwrite(data_, sizeof(data_type), BITS2BLOCKS(size_), file);
+      }
+
+      delete bitmap;
+    }
+
   protected:
     // Data members
     data_type *data_{};

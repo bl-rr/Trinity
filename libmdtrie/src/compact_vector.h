@@ -3,6 +3,9 @@
 
 #include "bit_vector.h"
 #include "delta_encoded_array.h"
+#include "defs.h"
+#include "disk_compact_vector.h"
+#include "disk_tree_block.h"
 
 #include <limits>
 
@@ -422,7 +425,7 @@ namespace bitmap
     }
   };
 
-  class CompactPtrVector : CompactVector<uint64_t, 44>
+  class CompactPtrVector : public CompactVector<uint64_t, 44>
   {
   public:
     // Type definitions
@@ -454,6 +457,13 @@ namespace bitmap
                                        reinterpret_cast<uint64_t>(val) >> 4ULL);
     }
 
+    // since the offsets are small enough, and packed, so we are not shifting
+    void SerializeSet(pos_type idx, void *val)
+    {
+      CompactVector<uint64_t, 44>::Set(idx,
+                                       reinterpret_cast<uint64_t>(val));
+    }
+
     void PushBack(void *val)
     {
       CompactVector<uint64_t, 44>::Append(reinterpret_cast<uint64_t>(val) >>
@@ -466,6 +476,38 @@ namespace bitmap
     }
 
     size_type get_num_elements() { return num_elements_; }
+
+    void serialize(FILE *file)
+    {
+      // size of the data held by CompactPtrVector
+      size_t data_size = BITS2BLOCKS(this->size_) * sizeof(data_type);
+      // create a copy of the current compact ptr vector but using the offset vectors
+      CompactPtrVector *cpv_copy = new CompactPtrVector(num_elements_);
+      for (int i = 0; i < num_elements_; i++)
+      {
+        uint64_t ptr_addr = (uint64_t)this->At(i);
+        assert(pointers_to_offsets_map.find(ptr_addr) !=
+               pointers_to_offsets_map.end());
+        // asserting that pointer address fetched from pointers_to_offsets_map is divisible by 16
+        // std::cout << (uint64_t)pointers_to_offsets_map.at(ptr_addr) << std::endl;
+        // assert((pointers_to_offsets_map.at(ptr_addr) * 4) % 16 == 0);
+
+        cpv_copy->SerializeSet(i, (void *)(pointers_to_offsets_map.at(ptr_addr)));
+      }
+
+      // write the copy to the file
+      data_type *allocated_data = cpv_copy->data_;
+      cpv_copy->data_ = (uint64_t *)(sizeof(CompactPtrVector) + current_offset);
+      fwrite(cpv_copy, sizeof(CompactPtrVector), 1, file);
+
+      current_offset += sizeof(CompactPtrVector);
+      // write the data
+      fwrite(allocated_data, data_size, 1, file);
+      current_offset += data_size;
+
+      free(cpv_copy);
+      free(allocated_data);
+    }
 
   private:
     size_type num_elements_;

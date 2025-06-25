@@ -17,21 +17,21 @@ namespace disk_bits
   public:
     // deleted: constructors
     // todo: deal with std::vectors
-    std::vector<n_leaves_t> *get_vector_pointer(uint64_t base)
+    disk_std_vector<n_leaves_t> *get_vector_pointer(uint64_t base)
     {
-      return (std::vector<n_leaves_t> *)(disk_ptr_ << 4ULL + base);
+      return (disk_std_vector<n_leaves_t> *)(disk_ptr_ + base);
     }
 
     disk_bitmap::disk_EliasGammaDeltaEncodedArray<n_leaves_t> *
     get_delta_encoded_array_pointer(uint64_t base)
     {
-      return (disk_bitmap::disk_EliasGammaDeltaEncodedArray<n_leaves_t> *)(disk_ptr_ << 4ULL + base);
+      return (disk_bitmap::disk_EliasGammaDeltaEncodedArray<n_leaves_t> *)(disk_ptr_ + base);
     }
 
     // deleted: checkers + size
     // deleted: mutators
 
-    bool binary_if_present(std::vector<n_leaves_t> *vect, n_leaves_t primary_key)
+    bool binary_if_present(disk_std_vector<n_leaves_t> *vect, n_leaves_t primary_key, uint64_t base)
     {
       uint64_t low = 0;
       uint64_t high = vect->size() - 1;
@@ -39,7 +39,7 @@ namespace disk_bits
       while (low + 1 < high)
       {
         uint64_t mid = (low + high) / 2;
-        if ((*vect)[mid] < primary_key)
+        if ((*vect).get(mid, base) < primary_key)
         {
           low = mid;
         }
@@ -48,7 +48,7 @@ namespace disk_bits
           high = mid;
         }
       }
-      if ((*vect)[low] == primary_key || (*vect)[high] == primary_key)
+      if ((*vect).get(low, base) == primary_key || (*vect).get(high, base) == primary_key)
       {
         return true;
       }
@@ -62,11 +62,11 @@ namespace disk_bits
 
       if (flag_ == 0)
       {
-        return (uint64_t)(disk_ptr_ + base);
+        return (uint64_t)(disk_ptr_);
       }
       if (flag_ == 1)
       {
-        return (*get_vector_pointer(base))[index];
+        return (*get_vector_pointer(base)).get(index, base);
       }
       else
       {
@@ -79,11 +79,11 @@ namespace disk_bits
 
       if (flag_ == 0)
       {
-        return primary_key == (uint64_t)disk_ptr_ + base;
+        return primary_key == (uint64_t)disk_ptr_;
       }
       else if (flag_ == 1)
       {
-        return binary_if_present(get_vector_pointer(base), primary_key);
+        return binary_if_present(get_vector_pointer(base), primary_key, base);
       }
       else
       {

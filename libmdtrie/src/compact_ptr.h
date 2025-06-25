@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include "disk_std_vector.h"
 
 // Disable in most cases.
 const uint64_t compact_pointer_vector_size_limit = 1000000;
@@ -172,6 +173,76 @@ namespace bits
         return get_vector_pointer()->size();
       }
       return get_delta_encoded_array_pointer()->get_num_elements();
+    }
+
+    void serialize(FILE *file, uint64_t index, bits::compact_ptr *data)
+    {
+      // each of this already has a place in the file, as specified by data
+      if (flag_ == 0)
+      {
+        // the data is on the ptr
+        data[index].ptr_ = ptr_;
+        data[index].flag_ = flag_;
+      }
+      else if (flag_ == 1)
+      {
+        // Write the vector pointer
+        std::vector<n_leaves_t> *vect_ptr = get_vector_pointer();
+        disk_std_vector<n_leaves_t> temp_vect = disk_std_vector<n_leaves_t>::allocate_space(*vect_ptr);
+
+        uint64_t disk_std_vector_offset = current_offset; // in place of ptr_ later
+        current_offset += sizeof(disk_std_vector<n_leaves_t>);
+
+        uint64_t disk_std_vector_data_offset = current_offset; // in the disk_std_vector
+        n_leaves_t *disk_std_vector_data_ptr = temp_vect.disk_data_;
+        temp_vect.disk_data_ = (n_leaves_t *)disk_std_vector_data_offset;
+
+        current_offset += vect_ptr->size() * sizeof(n_leaves_t);
+
+        for (n_leaves_t i = 0; i < vect_ptr->size(); i++)
+        {
+          disk_std_vector_data_ptr[i] = (*vect_ptr)[i];
+        }
+
+        // write the disk_std_vector and the data
+        if (ftell(file) != disk_std_vector_offset)
+        {
+          fseek(file, disk_std_vector_offset, SEEK_SET);
+          fwrite(&temp_vect, sizeof(disk_std_vector<n_leaves_t>), 1, file);
+          fseek(file, 0, SEEK_END);
+        }
+        else
+        {
+          fwrite(&temp_vect, sizeof(disk_std_vector<n_leaves_t>), 1, file);
+        }
+
+        if (ftell(file) != disk_std_vector_data_offset)
+        {
+          fseek(file, disk_std_vector_data_offset, SEEK_SET);
+          fwrite(disk_std_vector_data_ptr, sizeof(n_leaves_t),
+                 vect_ptr->size(), file);
+          fseek(file, 0, SEEK_END);
+        }
+        else
+        {
+          fwrite(disk_std_vector_data_ptr, sizeof(n_leaves_t),
+                 vect_ptr->size(), file);
+        }
+        // assert disk_std_vector_offset is divisible by 16
+        // assert(disk_std_vector_offset % 16 == 0);
+        data[index].ptr_ = disk_std_vector_offset;
+        data[index].flag_ = 1;
+
+        free(disk_std_vector_data_ptr);
+      }
+      else
+      {
+        // assert delta_array_offset % 16 == 0
+        // assert(current_offset % 16 == 0);
+        data[index].ptr_ = (uintptr_t)(current_offset);
+        data[index].flag_ = 2;
+        get_delta_encoded_array_pointer()->serialize(file);
+      }
     }
 
   private:

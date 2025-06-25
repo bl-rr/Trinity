@@ -174,6 +174,9 @@ public:
       fwrite(temp_children, sizeof(trie_node<DIMENSION> *),
              1 << level_to_num_children[level], file);
       uint64_t temp_children_offset = current_offset;
+      assert(
+          pointers_to_offsets_map.find((uint64_t)temp_children) ==
+          pointers_to_offsets_map.end());
       pointers_to_offsets_map.insert(
           {(uint64_t)this->trie_or_treeblock_ptr_, temp_children_offset});
       current_offset += sizeof(trie_node<DIMENSION> *) *

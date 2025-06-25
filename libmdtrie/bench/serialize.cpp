@@ -12,8 +12,8 @@
 // Function to generate a random integer in the range [min, max]
 int random_int(int min, int max)
 {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
+    // static std::random_device rd;
+    static std::mt19937 gen(1);
     std::uniform_int_distribution<> distrib(min, max);
     return distrib(gen);
 }
@@ -21,8 +21,8 @@ int random_int(int min, int max)
 int main()
 {
     dimension_t num_dimensions = 9;
-    max_tree_node = 512;
-    int total_count = 20000;
+    max_tree_node = 1024;
+    int total_count = 1000000;
     trie_depth = 6;
     max_depth = 32;
     no_dynamic_sizing = true;
@@ -55,6 +55,14 @@ int main()
         {
             point.set_coordinate(i, random_int(1, (int)1 << 16));
         }
+        // printout the point
+        std::cout << "Inserting Point: ";
+        for (dimension_t i = 0; i < num_dimensions; i++)
+        {
+            std::cout << point.get_coordinate(i) << " ";
+        }
+        std::cout << std::endl;
+
         start = GetTimestamp();
         mdtrie.insert_trie(&point, primary_key, &primary_key_to_treeblock_mapping);
         cumulative += GetTimestamp() - start;
@@ -72,8 +80,27 @@ int main()
         return 1;
     }
 
-    mdtrie.serialize(s_file);
-    fclose(s_file);
+    // save space to store offset of the compactptrvector, use a dummy value for now
+    size_t offset = 0;
+    fwrite(&offset, sizeof(size_t), 1, s_file);
+    current_offset += sizeof(size_t);
 
+    mdtrie.serialize(s_file);
+
+    // at this point, we know the location of the compactptrvector in the file
+    // offset = ftell(s_file);
+    assert(current_offset == ftell(s_file));
+    // go back to the beginning of the file and write the offset
+    fseek(s_file, 0, SEEK_SET);
+    fwrite(&current_offset, sizeof(size_t), 1, s_file);
+    // go back to the end of the file
+    fseek(s_file, 0, SEEK_END);
+
+    uint64_t ptr_addr = (uint64_t)(primary_key_to_treeblock_mapping.At(0));
+    std::cout << (pointers_to_offsets_map.at(ptr_addr)) << std::endl;
+
+    primary_key_to_treeblock_mapping.serialize(s_file);
+
+    fclose(s_file);
     return 0;
 }

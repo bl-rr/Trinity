@@ -140,6 +140,10 @@ int main()
         // std::cout << "size of md_trie " << sizeof(md_trie<9>) << std::endl;
         // std::cout << "size of disk_md_trie " << sizeof(disk_md_trie<9>) << std::endl;
 
+        // // compare size of std::vector and disk_std_vector
+        // std::cout << "size of std::vector " << sizeof(std::vector<int>) << std::endl;
+        // std::cout << "size of disk_std_vector " << sizeof(disk_std_vector<int>) << std::endl;
+
         data_point<9> *pt = disk_mdtrie->disk_lookup_trie(primary_key, (disk_bitmap::disk_CompactPtrVector *)(&primary_key_to_treeblock_mapping), 0);
         if ((int)pt->get_coordinate(0) != primary_key)
         {

@@ -60,8 +60,17 @@ namespace disk_bitmap
     // Accessors, Mutators
     void *At(pos_type idx, uint64_t base)
     {
-      return reinterpret_cast<void *>(disk_CompactVector<uint64_t, 44>::Get(idx, base)
-                                      << 4ULL);
+      uint64_t tmp_res = (uint64_t)(disk_CompactVector<uint64_t, 44>::Get(idx, base));
+      tmp_res = tmp_res;
+      return reinterpret_cast<void *>((tmp_res + base) << 4ULL);
+    }
+
+    // since the disk_CompactPtrVector is pretty compact and not always aligned
+    void *SerialAt(pos_type idx, uint64_t base)
+    {
+      uint64_t tmp_res = (uint64_t)(disk_CompactVector<uint64_t, 44>::Get(idx, base));
+      tmp_res = tmp_res;
+      return reinterpret_cast<void *>((tmp_res + base));
     }
 
     // deleted: mutators
@@ -75,75 +84,6 @@ namespace disk_bitmap
 
   private:
     size_type num_elements_;
-  };
-
-  class CompactPrimaryVector : disk_CompactVector<uint64_t, 46>
-  {
-  public:
-    // Type definitions
-    typedef typename disk_BitVector::size_type size_type;
-    typedef typename disk_BitVector::width_type width_type;
-    typedef typename disk_BitVector::pos_type pos_type;
-    typedef int64_t tmp_pos_type;
-    const uint64_t disk_compact_pointer_vector_size_limit = 1000;
-
-    // deleted: constructors
-    // deleted: mutators
-
-    // Accessors, Mutators
-    uint64_t At(pos_type idx, uint64_t base)
-    {
-      return reinterpret_cast<uint64_t>(disk_CompactVector<uint64_t, 46>::Get(idx, base)
-                                        << 20ULL);
-    }
-
-    uintptr_t ptr(pos_type idx, uint64_t base) { return At(idx, base) >> 0b11; }
-
-    size_t flag(pos_type idx, uint64_t base) { return At(idx, base) & 0b11; }
-
-    // todo: deal with std::vectors
-    std::vector<uint64_t> *get_vector_pointer(pos_type idx, uint64_t base)
-    {
-
-      return (std::vector<uint64_t> *)(ptr(idx, base) << 4ULL);
-    }
-
-    bitmap::EliasGammaDeltaEncodedArray<uint64_t> *
-    get_delta_encoded_array_pointer(pos_type idx, uint64_t base)
-    {
-      return (bitmap::EliasGammaDeltaEncodedArray<uint64_t> *)(ptr(idx, base) << 4ULL);
-    }
-
-    uint64_t get(pos_type idx, uint32_t index, uint64_t base)
-    {
-
-      if (flag(idx, base) == 0)
-      {
-        return (uint64_t)ptr(idx, base);
-      }
-      else if (flag(idx, base) == 1)
-      {
-        return (*get_vector_pointer(idx, base))[index];
-      }
-      else
-      {
-        return (*get_delta_encoded_array_pointer(idx, base))[index];
-      }
-    }
-
-    size_t size(pos_type idx, uint64_t base)
-    {
-
-      if (flag(idx, base) == 0)
-      {
-        return 1;
-      }
-      else if (flag(idx, base) == 1)
-      {
-        return get_vector_pointer(idx, base)->size();
-      }
-      return get_delta_encoded_array_pointer(idx, base)->get_num_elements();
-    }
   };
 
 } // namespace bitmap

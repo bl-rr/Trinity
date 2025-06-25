@@ -475,6 +475,48 @@ namespace bitmap
       return delta_sum;
     }
 
+    void serialize(FILE *file)
+    {
+      uint64_t delta_array_offset = current_offset;
+      current_offset += sizeof(EliasGammaDeltaEncodedArray<T, sampling_rate>);
+
+      EliasGammaDeltaEncodedArray<T, sampling_rate> *temp_array =
+          new EliasGammaDeltaEncodedArray<T, sampling_rate>();
+
+      memcpy(temp_array, this, sizeof(EliasGammaDeltaEncodedArray<T, sampling_rate>));
+
+      if (this->samples_.GetSizeInBits() > 0)
+      {
+        temp_array->samples_ = current_offset;
+        this->samples_.serialize(file);
+      }
+      if (this->delta_offsets_.GetSizeInBits() > 0)
+      {
+        temp_array->delta_offsets_ = current_offset;
+        this->delta_offsets_.serialize(file);
+      }
+      if (this->deltas_.GetSizeInBits() > 0)
+      {
+        temp_array->deltas_ = current_offset;
+        this->deltas_.serialize(file);
+      }
+
+      // write the EliasGammaDeltaEncodedArray
+      if (ftell(file) != delta_array_offset)
+      {
+        fseek(file, delta_array_offset, SEEK_SET);
+        fwrite(temp_array, sizeof(EliasGammaDeltaEncodedArray<T, sampling_rate>), 1, file);
+        fseek(file, 0, SEEK_END);
+      }
+      else
+      {
+        fwrite(temp_array, sizeof(EliasGammaDeltaEncodedArray<T, sampling_rate>), 1, file);
+      }
+
+      // cleanup
+      delete temp_array;
+    }
+
   private:
     virtual width_type EncodingSize(T delta) override
     {

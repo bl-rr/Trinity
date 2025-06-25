@@ -66,7 +66,8 @@ public:
   data_point<DIMENSION> *disk_lookup_trie(n_leaves_t primary_key, disk_bitmap::disk_CompactPtrVector *p_key_to_treeblock_compact, uint64_t base)
   {
     std::vector<morton_t> node_path_from_primary(max_depth_ + 1);
-    disk_tree_block<DIMENSION> *t_ptr = (disk_tree_block<DIMENSION> *)p_key_to_treeblock_compact->At(primary_key, base);
+    disk_tree_block<DIMENSION> *t_ptr = (disk_tree_block<DIMENSION> *)(p_key_to_treeblock_compact->SerialAt(primary_key, base));
+  std:;
     morton_t parent_symbol_from_primary =
         t_ptr->get_node_path_primary_key(primary_key, node_path_from_primary, base);
     node_path_from_primary[max_depth_ - 1] = parent_symbol_from_primary;

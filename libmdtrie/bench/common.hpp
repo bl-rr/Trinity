@@ -12,6 +12,10 @@
 
 #include <sstream>
 
+#include "compact_vector.h"
+#include "disk_compact_vector.h"
+bitmap::CompactPtrVector *p_key_to_treeblock_compact;
+
 #define TPCH_MICRO_SIZE 250000000   // 250M
 #define GITHUB_MICRO_SIZE 200000000 // 200M
 #define NYC_MICRO_SIZE 200000000    // 200M

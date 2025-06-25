@@ -1,12 +1,9 @@
 #ifndef MD_TRIE_DEFS_H
 #define MD_TRIE_DEFS_H
 
-#include "compact_vector.h"
-#include "disk_compact_vector.h"
 #include <assert.h>
 // #include <boost/bimap.hpp>
 #include <cinttypes>
-#include <compressed_bitmap.h>
 #include <mutex>
 #include <shared_mutex>
 #include <vector>
@@ -18,6 +15,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include <map>
 
@@ -107,7 +105,7 @@ level_t max_depth_;
  * whether we set the treeblock size to the same value.
  */
 
-bitmap::CompactPtrVector *p_key_to_treeblock_compact;
+// bitmap::CompactPtrVector *p_key_to_treeblock_compact;
 std::vector<level_t> dimension_to_num_bits;
 std::vector<level_t> start_dimension_bits;
 bool no_dynamic_sizing = false;

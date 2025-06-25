@@ -7,6 +7,9 @@
 #include "trie_node.h"
 #include <cmath>
 #include <sys/time.h>
+#include "compact_vector.h"
+
+#include "disk_std_vector.h"
 
 template <dimension_t DIMENSION>
 class tree_block
@@ -1667,8 +1670,8 @@ public:
         current_primary++;
       }
 
-      // n_leaves_t list_size = primary_key_list[current_primary].size();
-      n_leaves_t list_size = 1;
+      n_leaves_t list_size = primary_key_list[current_primary].size();
+      // n_leaves_t list_size = 1;
       for (n_leaves_t i = 0; i < list_size; i++)
       {
         for (dimension_t j = 0; j < DIMENSION; j++)
@@ -1894,7 +1897,7 @@ public:
            pointers_to_offsets_map.end());
 
     // good old start, current_offset is at the next write location
-    pointers_to_offsets_map.insert({(uint64_t)(this), current_offset});
+    pointers_to_offsets_map.insert({(uint64_t)(this), treeblock_offset});
 
     // populate the previous dummy tree_block with the correct data
     memcpy(temp_treeblock, this, sizeof(tree_block<DIMENSION>));
@@ -1998,6 +2001,52 @@ public:
       }
       free(temp_frontiers_);
     }
+
+    // before operation, just
+    assert(ftell(file) == current_offset);
+
+    // deal with std::vector of primary keys
+    // 4) primary_key_list
+    disk_std_vector<bits::compact_ptr> temp_primary_key_list =
+        disk_std_vector<bits::compact_ptr>::allocate_space(this->primary_key_list);
+
+    // uint64_t pkl_offset = current_offset;
+    // current_offset += sizeof(disk_std_vector<bits::compact_ptr>);
+
+    uint64_t pkl_data_offset = current_offset;
+    current_offset +=
+        this->primary_key_list.size() * sizeof(bits::compact_ptr);
+
+    uint64_t disk_data_location = (uint64_t)(temp_primary_key_list.disk_data_);
+    bits::compact_ptr *disk_data_ptr = temp_primary_key_list.disk_data_;
+    temp_primary_key_list.disk_data_ = (bits::compact_ptr *)pkl_data_offset;
+
+    for (int i = 0; i < this->primary_key_list.size(); i++)
+    {
+      this->primary_key_list[i].serialize(file, i, disk_data_ptr);
+    }
+
+    disk_tree_block<DIMENSION> *disk_temp_treeblock =
+        (disk_tree_block<DIMENSION> *)temp_treeblock;
+
+    memcpy((void *)(&(temp_treeblock->primary_key_list)), (void *)(&temp_primary_key_list), sizeof(disk_std_vector<bits::compact_ptr>));
+
+    // also write the data
+    if (ftell(file) != pkl_data_offset)
+    {
+      fseek(file, pkl_data_offset, SEEK_SET);
+      fwrite(disk_data_ptr, sizeof(bits::compact_ptr),
+             this->primary_key_list.size(), file);
+      fseek(file, 0, SEEK_END);
+    }
+    else
+    {
+      fwrite(disk_data_ptr, sizeof(bits::compact_ptr),
+             this->primary_key_list.size(), file);
+    }
+
+    // minor cleanup
+    free(disk_data_ptr);
 
     // finally I can write my current block
     if (ftell(file) != treeblock_offset)

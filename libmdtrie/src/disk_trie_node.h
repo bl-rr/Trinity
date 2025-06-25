@@ -28,10 +28,10 @@ public:
   void get_node_path(level_t level, std::vector<morton_t> &node_path, uint64_t base)
   {
 
-    if ((trie_node<DIMENSION> *)((uint64_t)disk_parent_trie_node_ + base))
+    if (disk_parent_trie_node_ && (disk_trie_node<DIMENSION> *)((uint64_t)disk_parent_trie_node_ + base))
     {
       node_path[level - 1] = parent_symbol_;
-      ((trie_node<DIMENSION> *)((uint64_t)disk_parent_trie_node_ + base))->get_node_path(level - 1, node_path);
+      ((disk_trie_node<DIMENSION> *)((uint64_t)disk_parent_trie_node_ + base))->get_node_path(level - 1, node_path, base);
     }
   }
 
