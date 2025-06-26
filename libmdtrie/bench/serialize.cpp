@@ -1,5 +1,5 @@
 #include "benchmark.hpp"
-#include "common.hpp"
+// #include "common.hpp"
 #include "parser.hpp"
 #include "trie.h"
 #include <climits>
@@ -23,7 +23,7 @@ int main()
     dimension_t num_dimensions = 9;
     max_tree_node = 1024;
     int total_count = 1000000;
-    trie_depth = 6;
+    trie_depth = 1;
     max_depth = 32;
     no_dynamic_sizing = true;
     bitmap::CompactPtrVector primary_key_to_treeblock_mapping(total_count);
@@ -55,13 +55,13 @@ int main()
         {
             point.set_coordinate(i, random_int(1, (int)1 << 16));
         }
-        // printout the point
-        std::cout << "Inserting Point: ";
-        for (dimension_t i = 0; i < num_dimensions; i++)
-        {
-            std::cout << point.get_coordinate(i) << " ";
-        }
-        std::cout << std::endl;
+        // print out the point
+        // std::cout << "Inserting Point: ";
+        // for (dimension_t i = 0; i < num_dimensions; i++)
+        // {
+        //     std::cout << point.get_coordinate(i) << " ";
+        // }
+        // std::cout << std::endl;
 
         start = GetTimestamp();
         mdtrie.insert_trie(&point, primary_key, &primary_key_to_treeblock_mapping);

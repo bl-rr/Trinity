@@ -84,7 +84,7 @@ int main()
 
     /* ---------- RANGE QUERY ------------ */
     cumulative = 0;
-    int num_queries = 3;
+    int num_queries = 10;
     std::cout << "Creating range queries that return every point. " << std::endl;
     for (int c = 0; c < num_queries; c++)
     {

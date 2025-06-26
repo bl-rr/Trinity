@@ -11,6 +11,11 @@
 #include <sys/time.h>
 #include <vector>
 
+namespace bitmap
+{
+  class Bitmap;
+}
+
 namespace disk_bitmap
 {
 
@@ -165,9 +170,11 @@ namespace disk_bitmap
 
   protected:
     // Data members
-    uint8_t _padding[8]; // Add 8 bytes to match BitVector
+    // uint8_t _padding[8]; // Add 8 bytes to match BitVector
     data_type *disk_data_{};
     size_type size_{};
+
+    friend class bitmap::Bitmap;
   };
 
 } // namespace bitmap

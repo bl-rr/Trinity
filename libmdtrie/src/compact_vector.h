@@ -5,9 +5,21 @@
 #include "delta_encoded_array.h"
 #include "defs.h"
 #include "disk_compact_vector.h"
-#include "disk_tree_block.h"
+#include "bit_vector.h"
 
 #include <limits>
+
+namespace bits
+{
+  class BitVector;
+}
+
+namespace disk_bitmap
+{
+  class disk_CompactPtrVector;
+}
+
+// #include "disk_"
 
 namespace bitmap
 {
@@ -495,18 +507,22 @@ namespace bitmap
         cpv_copy->SerializeSet(i, (void *)(pointers_to_offsets_map.at(ptr_addr)));
       }
 
-      // write the copy to the file
-      data_type *allocated_data = cpv_copy->data_;
-      cpv_copy->data_ = (uint64_t *)(sizeof(CompactPtrVector) + current_offset);
-      fwrite(cpv_copy, sizeof(CompactPtrVector), 1, file);
+      // create a disk_compact_vector to get rid of impact of vtables
+      disk_bitmap::disk_CompactPtrVector *disk_cpv = new disk_bitmap::disk_CompactPtrVector();
+      disk_cpv->num_elements_ = num_elements_;
+      disk_cpv->disk_data_ = (uint64_t *)(sizeof(disk_bitmap::disk_CompactPtrVector) + current_offset);
+      disk_cpv->size_ = size_;
 
-      current_offset += sizeof(CompactPtrVector);
+      // write the copy to the file
+      fwrite(disk_cpv, sizeof(disk_bitmap::disk_CompactPtrVector), 1, file);
+      current_offset += sizeof(disk_bitmap::disk_CompactPtrVector);
+
       // write the data
-      fwrite(allocated_data, data_size, 1, file);
+      fwrite(cpv_copy->data_, data_size, 1, file);
       current_offset += data_size;
 
+      free(cpv_copy->data_);
       free(cpv_copy);
-      free(allocated_data);
     }
 
   private:

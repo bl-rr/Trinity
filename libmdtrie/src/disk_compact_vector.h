@@ -82,8 +82,10 @@ namespace disk_bitmap
 
     size_type get_num_elements() { return num_elements_; }
 
-  private:
+  protected:
     size_type num_elements_;
+
+    friend class bitmap::CompactPtrVector;
   };
 
 } // namespace bitmap

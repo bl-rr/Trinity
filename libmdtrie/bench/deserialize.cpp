@@ -25,12 +25,12 @@ int main()
     dimension_t num_dimensions = 9;
     max_tree_node = 1024;
     int total_count = 1000000;
-    trie_depth = 6;
+    trie_depth = 1;
     max_depth = 32;
 
     max_depth_ = 32;
-    trie_depth_ = 6;
-    max_tree_nodes_ = 512;
+    trie_depth_ = 1;
+    max_tree_nodes_ = 1024;
 
     /* ---------- Initialization ------------ */
     std::vector<level_t> bit_widths = {
@@ -99,18 +99,18 @@ int main()
             std::cerr << "Wrong point retrieved!" << std::endl;
         }
         // print out the point for validation
-        std::cout << "Gottent Point: ";
-        for (dimension_t i = 0; i < num_dimensions; i++)
-        {
-            std::cout << pt->get_coordinate(i) << " ";
-        }
-        std::cout << std::endl;
+        // std::cout << "Gottent Point: ";
+        // for (dimension_t i = 0; i < num_dimensions; i++)
+        // {
+        //     std::cout << pt->get_coordinate(i) << " ";
+        // }
+        // std::cout << std::endl;
     }
     std::cout << "Lookup Latency per point: " << (float)cumulative / total_count << " us" << std::endl;
 
     /* ---------- RANGE QUERY ------------ */
     cumulative = 0;
-    int num_queries = 3;
+    int num_queries = 10;
     std::cout << "Creating range queries that return every point. " << std::endl;
     for (int c = 0; c < num_queries; c++)
     {

@@ -10,6 +10,12 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <vector>
+#include "disk_bitmap.h"
+
+namespace disk_bitmap
+{
+  class disk_Bitmap;
+}
 
 namespace bitmap
 {
@@ -220,24 +226,28 @@ namespace bitmap
 
     void serialize(FILE *file)
     {
-      Bitmap *bitmap = new Bitmap();
       uint64_t bitmap_location = current_offset;
-      current_offset += sizeof(Bitmap);
+      current_offset += sizeof(disk_bitmap::disk_Bitmap);
 
-      memcpy(bitmap, this, sizeof(Bitmap));
       uint64_t bitmap_data = current_offset;
       current_offset += BITS2BLOCKS(size_) * sizeof(data_type);
-      bitmap->data_ = (data_type *)bitmap_data;
+
+      // construct disk_bitmap
+      disk_bitmap::disk_Bitmap *disk_bitmap =
+          new disk_bitmap::disk_Bitmap();
+
+      disk_bitmap->disk_data_ = (data_type *)bitmap_data;
+      disk_bitmap->size_ = size_;
 
       if (ftell(file) != bitmap_location)
       {
         fseek(file, bitmap_location, SEEK_SET);
-        fwrite(bitmap, sizeof(Bitmap), 1, file);
+        fwrite(disk_bitmap, sizeof(disk_bitmap::disk_Bitmap), 1, file);
         fseek(file, 0, SEEK_END);
       }
       else
       {
-        fwrite(bitmap, sizeof(Bitmap), 1, file);
+        fwrite(disk_bitmap, sizeof(disk_bitmap::disk_Bitmap), 1, file);
       }
 
       if (ftell(file) != bitmap_data)
@@ -251,7 +261,7 @@ namespace bitmap
         fwrite(data_, sizeof(data_type), BITS2BLOCKS(size_), file);
       }
 
-      delete bitmap;
+      delete disk_bitmap;
     }
 
   protected:
