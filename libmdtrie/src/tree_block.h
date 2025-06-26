@@ -42,6 +42,22 @@ public:
     }
   }
 
+  ~tree_block()
+  {
+    if (dfuds_)
+      delete dfuds_;
+    for (int i = 0; i < num_frontiers_; i++)
+    {
+      auto &frontier = frontiers_[i];
+      if (frontier.pointer_)
+        delete frontier.pointer_;
+    }
+    if (num_frontiers_ > 0)
+    {
+      free(frontiers_);
+    }
+  }
+
   inline preorder_t num_frontiers() { return num_frontiers_; }
 
   inline tree_block *get_pointer(preorder_t current_frontier)

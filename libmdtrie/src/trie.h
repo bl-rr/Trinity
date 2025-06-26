@@ -35,6 +35,46 @@ public:
     root_ = new trie_node<DIMENSION>(false, level_to_num_children[0]);
   }
 
+  ~md_trie()
+  {
+
+    int current_level = 0;
+    // free all trie nodes, layers by layer
+    std::queue<trie_node<DIMENSION> *> trie_node_queue;
+    trie_node_queue.push(root_);
+    while (!trie_node_queue.empty())
+    {
+
+      unsigned int queue_size = trie_node_queue.size();
+
+      for (unsigned int s = 0; s < queue_size; s++)
+      {
+
+        trie_node<DIMENSION> *current_node = trie_node_queue.front();
+        trie_node_queue.pop();
+
+        if (current_level != trie_depth_)
+        {
+          for (int i = 0; i < (1 << level_to_num_children[current_level]);
+               i++)
+          {
+            if (current_node->get_child(i))
+            {
+              trie_node_queue.push(current_node->get_child(i));
+            }
+          }
+          current_node->delete_non_leaf_node();
+        }
+        else
+        {
+          delete current_node->get_block();
+        }
+        delete current_node;
+      }
+      current_level++;
+    }
+  }
+
   inline trie_node<DIMENSION> *root() { return root_; }
 
   tree_block<DIMENSION> *walk_trie(trie_node<DIMENSION> *current_trie_node,

@@ -24,7 +24,7 @@ int main()
     /* ---------- Settings ------------ */
     dimension_t num_dimensions = 9;
     max_tree_node = 1024;
-    int total_count = 1000000;
+    int total_count = 1000;
     trie_depth = 1;
     max_depth = 32;
 
@@ -105,6 +105,7 @@ int main()
         //     std::cout << pt->get_coordinate(i) << " ";
         // }
         // std::cout << std::endl;
+        free(pt);
     }
     std::cout << "Lookup Latency per point: " << (float)cumulative / total_count << " us" << std::endl;
 

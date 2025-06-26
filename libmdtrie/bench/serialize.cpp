@@ -22,7 +22,7 @@ int main()
 {
     dimension_t num_dimensions = 9;
     max_tree_node = 1024;
-    int total_count = 1000000;
+    int total_count = 1000;
     trie_depth = 1;
     max_depth = 32;
     no_dynamic_sizing = true;

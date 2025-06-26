@@ -521,8 +521,8 @@ namespace bitmap
       fwrite(cpv_copy->data_, data_size, 1, file);
       current_offset += data_size;
 
-      free(cpv_copy->data_);
-      free(cpv_copy);
+      delete cpv_copy;
+      delete disk_cpv;
     }
 
   private:

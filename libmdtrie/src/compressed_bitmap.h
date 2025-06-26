@@ -142,6 +142,22 @@ namespace compressed_bitmap
       SETBITVAL(flag_, 0);
     }
 
+    ~compressed_bitmap()
+    {
+      if (data_)
+      {
+        free(data_);
+        data_ = nullptr;
+      }
+      if (flag_)
+      {
+        free(flag_);
+        flag_ = nullptr;
+      }
+      data_size_ = 0;
+      flag_size_ = 0;
+    }
+
     inline uint64_t size() const
     {
 

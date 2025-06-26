@@ -38,7 +38,7 @@ namespace bitmap
     void Init(size_type num_bits)
     {
       data_ = static_cast<data_type *>(
-          malloc(BITS2BLOCKS(num_bits) * sizeof(data_type)));
+          calloc(1, BITS2BLOCKS(num_bits) * sizeof(data_type)));
       size_ = num_bits;
     }
 

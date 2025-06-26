@@ -22,7 +22,7 @@ int main()
 {
     dimension_t num_dimensions = 9;
     max_tree_node = 1024;
-    int total_count = 1000000;
+    int total_count = 1000;
     trie_depth = 6;
     max_depth = 32;
     no_dynamic_sizing = true;
@@ -79,12 +79,13 @@ int main()
             std::cerr << "Wrong point retrieved!" << std::endl;
         }
         cumulative += GetTimestamp() - start;
+        delete pt;
     }
     std::cout << "Lookup Latency per point: " << (float)cumulative / total_count << " us" << std::endl;
 
     /* ---------- RANGE QUERY ------------ */
     cumulative = 0;
-    int num_queries = 10;
+    int num_queries = 3;
     std::cout << "Creating range queries that return every point. " << std::endl;
     for (int c = 0; c < num_queries; c++)
     {
