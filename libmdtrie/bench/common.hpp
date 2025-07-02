@@ -3,6 +3,7 @@
 #define TrinityCommon_H
 
 #include "trie.h"
+#include "disk_trie.h"
 #include <climits>
 #include <fstream>
 #include <iostream>
@@ -29,7 +30,8 @@ bitmap::CompactPtrVector *p_key_to_treeblock_compact;
 #define NYC_DIMENSION 15
 
 #define QUERY_NUM 1000
-#define SERVER_TO_SERVER_IN_NS 92
+// #define SERVER_TO_SERVER_IN_NS 92
+#define SERVER_TO_SERVER_IN_NS 0
 
 // #define TEST_STORAGE
 
@@ -40,7 +42,7 @@ enum
   NYC = 3,
 };
 
-std::string ROOT_DIR = "/proj/trinity-PG0/Trinity/";
+std::string ROOT_DIR = "/home/wuyue/Desktop/lbh/gpu-mdtrie/disk-trinity/";
 std::string TPCH_DATA_ADDR = ROOT_DIR + "datasets/tpch_dataset.csv";
 std::string GITHUB_DATA_ADDR = ROOT_DIR + "datasets/github_dataset.csv";
 std::string NYC_DATA_ADDR = ROOT_DIR + "datasets/nyc_dataset.csv";
@@ -52,6 +54,10 @@ std::string NYC_SPLIT_ADDR = ROOT_DIR + "datasets/nyc_split/";
 std::string TPCH_QUERY_ADDR = ROOT_DIR + "queries/tpch_query";
 std::string GITHUB_QUERY_ADDR = ROOT_DIR + "queries/github_query";
 std::string NYC_QUERY_ADDR = ROOT_DIR + "queries/nyc_query";
+
+std::string TPCH_SERIALIZE_ADDR = ROOT_DIR + "serialize/tpch_serialize/";
+std::string GITHUB_SERIALIZE_ADDR = ROOT_DIR + "serialize/github_serialize/";
+std::string NYC_SERIALIZE_ADDR = ROOT_DIR + "serialize/nyc_serialize/";
 
 unsigned int skip_size_count = 0;
 /* Because it results in otherwise OOM for other benchmarks. */
@@ -73,7 +79,7 @@ level_t trie_depth = 6;
 preorder_t max_tree_node = 512;
 point_t points_to_insert = 1000;
 point_t points_to_lookup = 1000;
-std::string results_folder_addr = "/proj/trinity-PG0/Trinity/results/";
+std::string results_folder_addr = "/home/wuyue/Desktop/lbh/gpu-mdtrie/disk-trinity/results/";
 std::string identification_string = "";
 int optimization_code = OPTIMIZATION_SM;
 std::string optimization = "SM";
@@ -153,8 +159,11 @@ void use_nyc_setting(int dimensions, int _total_points_count)
   bit_widths.resize(dimensions);
 
   trie_depth = 6;
+  trie_depth_ = 6;
   max_depth = 28;
+  max_depth_ = 28;
   no_dynamic_sizing = true;
+  max_tree_node = 512;
 
   create_level_to_num_children(bit_widths, start_bits, max_depth);
 }
@@ -201,7 +210,9 @@ void use_github_setting(int dimensions, int _total_points_count)
   bit_widths.resize(dimensions);
 
   trie_depth = 6;
+  trie_depth_ = 6;
   max_depth = 24;
+  max_depth_ = 24;
   no_dynamic_sizing = true;
   max_tree_node = 512;
 
@@ -262,13 +273,19 @@ void use_tpch_setting(int dimensions, int _total_points_count)
   }
 
   trie_depth = 6;
+  trie_depth_ = 6;
   max_depth = 32;
+  max_depth_ = 32;
   no_dynamic_sizing = true;
+  max_tree_node = 512;
+
   create_level_to_num_children(bit_widths, start_bits, max_depth);
 }
 
 void flush_vector_to_file(std::vector<TimeStamp> vect, std::string filename)
 {
+
+  std::cout << "Flushing vector to file: " << filename << std::endl;
 
   std::ofstream outFile(filename);
   for (const auto &e : vect)
@@ -450,6 +467,82 @@ void get_random_query_tpch(data_point<DIMENSION> *start_range,
       end_range->set_coordinate(i, end_range->get_coordinate(i) - 19000000);
     }
   }
+}
+
+template <dimension_t DIMENSION>
+void serialize_to_file(const char *filename, md_trie<DIMENSION> *in_mem_mdtrie, bitmap::CompactPtrVector *primary_key_to_treeblock_mapping)
+{
+  // create a file for serialization
+  FILE *s_file = fopen(filename, "wb");
+
+  // check if file is created successfully
+  if (!s_file)
+  {
+    std::cerr << "Error: Unable to create file for serialization."
+              << std::endl;
+    exit(1);
+  }
+  // save space to store offset of the compactptrvector, use a dummy value for now
+  size_t offset = 0;
+  fwrite(&offset, sizeof(size_t), 1, s_file);
+  current_offset += sizeof(size_t);
+
+  in_mem_mdtrie->serialize(s_file);
+
+  // at this point, we know the location of the compactptrvector in the file
+  // offset = ftell(s_file);
+  assert(current_offset == ftell(s_file));
+  // go back to the beginning of the file and write the offset
+  fseek(s_file, 0, SEEK_SET);
+  fwrite(&current_offset, sizeof(size_t), 1, s_file);
+  // go back to the end of the file
+  fseek(s_file, 0, SEEK_END);
+
+  primary_key_to_treeblock_mapping->serialize(s_file);
+
+  fclose(s_file);
+
+  std::cout << "Serialized to file: " << filename << std::endl;
+}
+
+template <dimension_t DIMENSION>
+void deserialize_from_file(const char *filename,
+                           disk_md_trie<DIMENSION> **disk_mdtrie,
+                           disk_bitmap::disk_CompactPtrVector **primary_key_to_treeblock_mapping,
+                           uint64_t *base, void **file_start, size_t *file_size)
+{
+  int fd;
+  if ((fd = open(filename, O_RDONLY)) == -1)
+  {
+    perror("open");
+    exit(1);
+  }
+
+  struct stat sb;
+  if (fstat(fd, &sb) == -1)
+  {
+    perror("fstat");
+    exit(1);
+  }
+  *file_size = sb.st_size;
+
+  *file_start = mmap(
+      nullptr, *file_size, PROT_READ, MAP_SHARED, fd, 0);
+
+  if (*file_start == MAP_FAILED)
+  {
+    perror("mmap");
+    close(fd);
+    exit(1);
+  };
+
+  uint64_t cpv_offset = *((size_t *)(*file_start));
+
+  *disk_mdtrie = (disk_md_trie<DIMENSION> *)((uint64_t)(*file_start) + sizeof(size_t));
+  *primary_key_to_treeblock_mapping =
+      (disk_bitmap::disk_CompactPtrVector *)((uint64_t)(*file_start) + cpv_offset);
+
+  *base = (uint64_t)(*file_start);
 }
 
 #endif // TrinityCommon_H

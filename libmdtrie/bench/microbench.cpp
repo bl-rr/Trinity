@@ -1,4 +1,5 @@
 #include "benchmark.hpp"
+#include "disk_benchmark.hpp"
 #include "common.hpp"
 #include "parser.hpp"
 #include "trie.h"
@@ -31,6 +32,129 @@ void github_bench(void)
                      get_query_github<GITHUB_DIMENSION>);
 }
 
+void github_bench_deserialize(void)
+{
+
+  use_github_setting(GITHUB_DIMENSION, micro_github_size);
+  disk_md_trie<GITHUB_DIMENSION> *disk_mdtrie;
+  disk_bitmap::disk_CompactPtrVector *disk_primary_key_to_treeblock_mapping; // pointer to array
+  uint64_t base;                                                             // needed for operation
+  void *file_start;                                                          // needed for madvise
+  size_t file_size;
+
+  deserialize_from_file((GITHUB_SERIALIZE_ADDR + "trie.bin").c_str(), &disk_mdtrie,
+                        &disk_primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
+
+  disk_MdTrieBench<GITHUB_DIMENSION>
+      disk_bench(disk_mdtrie, disk_primary_key_to_treeblock_mapping, base);
+  std::string folder_name = "microbenchmark-des/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  disk_bench.disk_lookup(folder_name + "github_lookup" + identification_string);
+  disk_bench.disk_range_search(GITHUB_QUERY_ADDR,
+                               folder_name + "github_query" + identification_string,
+                               get_query_github<GITHUB_DIMENSION>);
+}
+
+void github_disk_query(void)
+{
+
+  use_github_setting(GITHUB_DIMENSION, micro_github_size);
+  disk_md_trie<GITHUB_DIMENSION> *disk_mdtrie;
+  disk_bitmap::disk_CompactPtrVector *disk_primary_key_to_treeblock_mapping; // pointer to array
+  uint64_t base;                                                             // needed for operation
+  void *file_start;                                                          // needed for madvise
+  size_t file_size;
+
+  deserialize_from_file((GITHUB_SERIALIZE_ADDR + "trie.bin").c_str(), &disk_mdtrie,
+                        &disk_primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
+
+  disk_MdTrieBench<GITHUB_DIMENSION>
+      disk_bench(disk_mdtrie, disk_primary_key_to_treeblock_mapping, base);
+  std::string folder_name = "microbenchmark-disk/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  disk_bench.disk_range_search(GITHUB_QUERY_ADDR,
+                               folder_name + "github_query" + identification_string,
+                               get_query_github<GITHUB_DIMENSION>);
+}
+
+void github_disk_lookup(void)
+{
+
+  use_github_setting(GITHUB_DIMENSION, micro_github_size);
+  disk_md_trie<GITHUB_DIMENSION> *disk_mdtrie;
+  disk_bitmap::disk_CompactPtrVector *disk_primary_key_to_treeblock_mapping; // pointer to array
+  uint64_t base;                                                             // needed for operation
+  void *file_start;                                                          // needed for madvise
+  size_t file_size;
+
+  deserialize_from_file((GITHUB_SERIALIZE_ADDR + "trie.bin").c_str(), &disk_mdtrie,
+                        &disk_primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
+
+  disk_MdTrieBench<GITHUB_DIMENSION>
+      disk_bench(disk_mdtrie, disk_primary_key_to_treeblock_mapping, base);
+  std::string folder_name = "microbenchmark-disk/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  disk_bench.disk_lookup(folder_name + "github_lookup" + identification_string);
+}
+
+void github_bench_deserialize_npc(void)
+{
+
+  use_github_setting(GITHUB_DIMENSION, micro_github_size);
+  disk_md_trie<GITHUB_DIMENSION> *disk_mdtrie;
+  disk_bitmap::disk_CompactPtrVector *disk_primary_key_to_treeblock_mapping; // pointer to array
+  uint64_t base;                                                             // needed for operation
+  void *file_start;                                                          // needed for madvise
+  size_t file_size;
+
+  deserialize_from_file((GITHUB_SERIALIZE_ADDR + "trie.bin").c_str(), &disk_mdtrie,
+                        &disk_primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
+
+  madvise(file_start, file_size, MADV_RANDOM);
+
+  disk_MdTrieBench<GITHUB_DIMENSION>
+      disk_bench(disk_mdtrie, disk_primary_key_to_treeblock_mapping, base);
+  std::string folder_name = "microbenchmark-des-npc/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  disk_bench.disk_lookup_npc(folder_name + "github_lookup" + identification_string, file_start, file_size);
+  disk_bench.disk_range_search_npc(GITHUB_QUERY_ADDR,
+                                   folder_name + "github_query" + identification_string,
+                                   get_query_github<GITHUB_DIMENSION>, file_start, file_size);
+}
+
+void github_bench_serialize(void)
+{
+
+  use_github_setting(GITHUB_DIMENSION, micro_github_size);
+  md_trie<GITHUB_DIMENSION> mdtrie(max_depth, trie_depth, max_tree_node);
+  MdTrieBench<GITHUB_DIMENSION> bench(&mdtrie);
+  p_key_to_treeblock_compact = new bitmap::CompactPtrVector(total_points_count);
+  std::string folder_name = "microbenchmark/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  bench.insert(GITHUB_DATA_ADDR,
+               folder_name + "github_insert" + identification_string,
+               total_points_count,
+               parse_line_github);
+  serialize_to_file((GITHUB_SERIALIZE_ADDR + identification_string + "trie.bin").c_str(),
+                    &mdtrie,
+                    p_key_to_treeblock_compact);
+}
+
 void nyc_bench(void)
 {
 
@@ -54,6 +178,128 @@ void nyc_bench(void)
                      get_query_nyc<NYC_DIMENSION>);
 }
 
+void nyc_bench_serialize(void)
+{
+
+  use_nyc_setting(NYC_DIMENSION, micro_nyc_size);
+  md_trie<NYC_DIMENSION> mdtrie(max_depth, trie_depth, max_tree_node);
+  MdTrieBench<NYC_DIMENSION> bench(&mdtrie);
+  p_key_to_treeblock_compact = new bitmap::CompactPtrVector(total_points_count);
+  std::string folder_name = "microbenchmark/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  bench.insert(NYC_DATA_ADDR,
+               folder_name + "nyc_insert" + identification_string,
+               total_points_count,
+               parse_line_nyc);
+  serialize_to_file((NYC_SERIALIZE_ADDR + identification_string + "trie.bin").c_str(),
+                    &mdtrie,
+                    p_key_to_treeblock_compact);
+}
+
+void nyc_bench_deserialize(void)
+{
+
+  use_nyc_setting(NYC_DIMENSION, micro_nyc_size);
+  disk_md_trie<NYC_DIMENSION> *disk_mdtrie;
+  disk_bitmap::disk_CompactPtrVector *disk_primary_key_to_treeblock_mapping; // pointer to array
+  uint64_t base;                                                             // needed for operation
+  void *file_start;                                                          // needed for madvise
+  size_t file_size;
+
+  deserialize_from_file((NYC_SERIALIZE_ADDR + "trie.bin").c_str(), &disk_mdtrie,
+                        &disk_primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
+
+  disk_MdTrieBench<NYC_DIMENSION>
+      disk_bench(disk_mdtrie, disk_primary_key_to_treeblock_mapping, base);
+  std::string folder_name = "microbenchmark-des/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  };
+  disk_bench.disk_lookup(folder_name + "nyc_lookup" + identification_string);
+  disk_bench.disk_range_search(NYC_QUERY_ADDR,
+                               folder_name + "nyc_query" + identification_string,
+                               get_query_nyc<NYC_DIMENSION>);
+}
+
+void nyc_disk_query(void)
+{
+  use_nyc_setting(NYC_DIMENSION, micro_nyc_size);
+  disk_md_trie<NYC_DIMENSION> *disk_mdtrie;
+  disk_bitmap::disk_CompactPtrVector *disk_primary_key_to_treeblock_mapping; // pointer to array
+  uint64_t base;                                                             // needed for operation
+  void *file_start;                                                          // needed for madvise
+  size_t file_size;
+
+  deserialize_from_file((NYC_SERIALIZE_ADDR + "trie.bin").c_str(), &disk_mdtrie,
+                        &disk_primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
+
+  disk_MdTrieBench<NYC_DIMENSION>
+      disk_bench(disk_mdtrie, disk_primary_key_to_treeblock_mapping, base);
+  std::string folder_name = "microbenchmark-disk/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  };
+  disk_bench.disk_range_search(NYC_QUERY_ADDR,
+                               folder_name + "nyc_query" + identification_string,
+                               get_query_nyc<NYC_DIMENSION>);
+}
+
+void nyc_disk_lookup(void)
+{
+
+  use_nyc_setting(NYC_DIMENSION, micro_nyc_size);
+  disk_md_trie<NYC_DIMENSION> *disk_mdtrie;
+  disk_bitmap::disk_CompactPtrVector *disk_primary_key_to_treeblock_mapping; // pointer to array
+  uint64_t base;                                                             // needed for operation
+  void *file_start;                                                          // needed for madvise
+  size_t file_size;
+
+  deserialize_from_file((NYC_SERIALIZE_ADDR + "trie.bin").c_str(), &disk_mdtrie,
+                        &disk_primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
+
+  disk_MdTrieBench<NYC_DIMENSION>
+      disk_bench(disk_mdtrie, disk_primary_key_to_treeblock_mapping, base);
+  std::string folder_name = "microbenchmark-disk/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  };
+  disk_bench.disk_lookup(folder_name + "nyc_lookup" + identification_string);
+}
+
+void nyc_bench_deserialize_npc(void) // no-page-cache
+{
+
+  use_nyc_setting(NYC_DIMENSION, micro_nyc_size);
+  disk_md_trie<NYC_DIMENSION> *disk_mdtrie;
+  disk_bitmap::disk_CompactPtrVector *disk_primary_key_to_treeblock_mapping; // pointer to array
+  uint64_t base;                                                             // needed for operation
+  void *file_start;                                                          // needed for madvise
+  size_t file_size;
+
+  deserialize_from_file((NYC_SERIALIZE_ADDR + "trie.bin").c_str(), &disk_mdtrie,
+                        &disk_primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
+
+  madvise(file_start, file_size, MADV_RANDOM);
+
+  disk_MdTrieBench<NYC_DIMENSION>
+      disk_bench(disk_mdtrie, disk_primary_key_to_treeblock_mapping, base);
+  std::string folder_name = "microbenchmark-des-npc/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  };
+  disk_bench.disk_lookup_npc(folder_name + "nyc_lookup" + identification_string, file_start, file_size);
+  disk_bench.disk_range_search_npc(NYC_QUERY_ADDR,
+                                   folder_name + "nyc_query" + identification_string,
+                                   get_query_nyc<NYC_DIMENSION>, file_start, file_size);
+}
+
 void tpch_bench(void)
 {
 
@@ -75,6 +321,129 @@ void tpch_bench(void)
   bench.range_search(TPCH_QUERY_ADDR,
                      folder_name + "tpch_query" + identification_string,
                      get_query_tpch<TPCH_DIMENSION>);
+}
+
+void tpch_bench_serialize(void)
+{
+
+  use_tpch_setting(TPCH_DIMENSION, micro_tpch_size);
+  md_trie<TPCH_DIMENSION> mdtrie(max_depth, trie_depth, max_tree_node);
+  MdTrieBench<TPCH_DIMENSION> bench(&mdtrie);
+  p_key_to_treeblock_compact = new bitmap::CompactPtrVector(total_points_count);
+  std::string folder_name = "microbenchmark/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  bench.insert(TPCH_DATA_ADDR,
+               folder_name + "tpch_insert" + identification_string,
+               total_points_count,
+               parse_line_tpch);
+  serialize_to_file((TPCH_SERIALIZE_ADDR + identification_string + "trie.bin").c_str(),
+                    &mdtrie,
+                    p_key_to_treeblock_compact);
+}
+
+void tpch_bench_deserialize(void)
+{
+
+  use_tpch_setting(TPCH_DIMENSION, micro_tpch_size);
+  disk_md_trie<TPCH_DIMENSION> *disk_mdtrie;
+  disk_bitmap::disk_CompactPtrVector *disk_primary_key_to_treeblock_mapping; // pointer to array
+  uint64_t base;                                                             // needed for operation
+  void *file_start;                                                          // needed for madvise
+  size_t file_size;
+
+  deserialize_from_file((TPCH_SERIALIZE_ADDR + "trie.bin").c_str(), &disk_mdtrie,
+                        &disk_primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
+
+  disk_MdTrieBench<TPCH_DIMENSION>
+      disk_bench(disk_mdtrie, disk_primary_key_to_treeblock_mapping, base);
+  std::string folder_name = "microbenchmark-des/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  };
+  disk_bench.disk_lookup(folder_name + "tpch_lookup" + identification_string);
+  disk_bench.disk_range_search(TPCH_QUERY_ADDR,
+                               folder_name + "tpch_query" + identification_string,
+                               get_query_tpch<TPCH_DIMENSION>);
+}
+
+void tpch_disk_query(void)
+{
+
+  use_tpch_setting(TPCH_DIMENSION, micro_tpch_size);
+  disk_md_trie<TPCH_DIMENSION> *disk_mdtrie;
+  disk_bitmap::disk_CompactPtrVector *disk_primary_key_to_treeblock_mapping; // pointer to array
+  uint64_t base;                                                             // needed for operation
+  void *file_start;                                                          // needed for madvise
+  size_t file_size;
+
+  deserialize_from_file((TPCH_SERIALIZE_ADDR + "trie.bin").c_str(), &disk_mdtrie,
+                        &disk_primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
+
+  disk_MdTrieBench<TPCH_DIMENSION>
+      disk_bench(disk_mdtrie, disk_primary_key_to_treeblock_mapping, base);
+  std::string folder_name = "microbenchmark-disk/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  };
+  disk_bench.disk_range_search(TPCH_QUERY_ADDR,
+                               folder_name + "tpch_query" + identification_string,
+                               get_query_tpch<TPCH_DIMENSION>);
+}
+
+void tpch_disk_lookup(void)
+{
+
+  use_tpch_setting(TPCH_DIMENSION, micro_tpch_size);
+  disk_md_trie<TPCH_DIMENSION> *disk_mdtrie;
+  disk_bitmap::disk_CompactPtrVector *disk_primary_key_to_treeblock_mapping; // pointer to array
+  uint64_t base;                                                             // needed for operation
+  void *file_start;                                                          // needed for madvise
+  size_t file_size;
+
+  deserialize_from_file((TPCH_SERIALIZE_ADDR + "trie.bin").c_str(), &disk_mdtrie,
+                        &disk_primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
+
+  disk_MdTrieBench<TPCH_DIMENSION>
+      disk_bench(disk_mdtrie, disk_primary_key_to_treeblock_mapping, base);
+  std::string folder_name = "microbenchmark-disk/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  };
+  disk_bench.disk_lookup(folder_name + "tpch_lookup" + identification_string);
+}
+
+void tpch_bench_deserialize_npc(void)
+{
+
+  use_tpch_setting(TPCH_DIMENSION, micro_tpch_size);
+  disk_md_trie<TPCH_DIMENSION> *disk_mdtrie;
+  disk_bitmap::disk_CompactPtrVector *disk_primary_key_to_treeblock_mapping; // pointer to array
+  uint64_t base;                                                             // needed for operation
+  void *file_start;                                                          // needed for madvise
+  size_t file_size;
+
+  deserialize_from_file((TPCH_SERIALIZE_ADDR + "trie.bin").c_str(), &disk_mdtrie,
+                        &disk_primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
+
+  madvise(file_start, file_size, MADV_RANDOM);
+
+  disk_MdTrieBench<TPCH_DIMENSION>
+      disk_bench(disk_mdtrie, disk_primary_key_to_treeblock_mapping, base);
+  std::string folder_name = "microbenchmark-des-npc/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  };
+  disk_bench.disk_lookup_npc(folder_name + "tpch_lookup" + identification_string, file_start, file_size);
+  disk_bench.disk_range_search_npc(TPCH_QUERY_ADDR,
+                                   folder_name + "tpch_query" + identification_string,
+                                   get_query_tpch<TPCH_DIMENSION>, file_start, file_size);
 }
 
 void sensitivity_num_dimensions_9(void)
@@ -314,6 +683,38 @@ int main(int argc, char *argv[])
     github_bench();
   else if (argvalue == "nyc")
     nyc_bench();
+  else if (argvalue == "tpch-serialize")
+    tpch_bench_serialize();
+  else if (argvalue == "github-serialize")
+    github_bench_serialize();
+  else if (argvalue == "nyc-serialize")
+    nyc_bench_serialize();
+  else if (argvalue == "tpch-deserialize")
+    tpch_bench_deserialize();
+  else if (argvalue == "github-deserialize")
+    github_bench_deserialize();
+  else if (argvalue == "nyc-deserialize")
+    nyc_bench_deserialize();
+  else if (argvalue == "tpch-deserialize-npc")
+    tpch_bench_deserialize_npc();
+  else if (argvalue == "github-deserialize-npc")
+    github_bench_deserialize_npc();
+  else if (argvalue == "nyc-deserialize-npc")
+    nyc_bench_deserialize_npc();
+
+  else if (argvalue == "github-disk-query")
+    github_disk_query();
+  else if (argvalue == "tpch-disk-query")
+    tpch_disk_query();
+  else if (argvalue == "nyc-disk-query")
+    nyc_disk_query();
+  else if (argvalue == "github-disk-lookup")
+    github_disk_lookup();
+  else if (argvalue == "tpch-disk-lookup")
+    tpch_disk_lookup();
+  else if (argvalue == "nyc-disk-lookup")
+    nyc_disk_lookup();
+
   else if (argvalue == "sensitivity_num_dimensions")
   {
     switch (sensitivity_dimensions)

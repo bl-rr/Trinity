@@ -4,7 +4,7 @@ add_library(mdtrie INTERFACE)
 target_include_directories(mdtrie INTERFACE src/)
 set(MDTRIE_LIBS "${HEAP_MANAGER_LIBRARY}" "${CMAKE_DL_LIBS}" "mdtrie")
 
-add_compile_options(-mbmi2 -g)
+add_compile_options(-mbmi2 -O3)
 
 add_executable(microbench
         bench/microbench.cpp)
@@ -20,6 +20,9 @@ add_executable(serialize
 
 add_executable(deserialize
         bench/deserialize.cpp)
+
+add_executable(drop_cache
+        bench/drop_cache.cpp)
 
 target_link_libraries(microbench ${MDTRIE_LIBS})
 target_link_libraries(example ${MDTRIE_LIBS})

@@ -2042,8 +2042,8 @@ public:
       this->primary_key_list[i].serialize(file, i, disk_data_ptr);
     }
 
-    disk_tree_block<DIMENSION> *disk_temp_treeblock =
-        (disk_tree_block<DIMENSION> *)temp_treeblock;
+    // disk_tree_block<DIMENSION> *disk_temp_treeblock =
+    //     (disk_tree_block<DIMENSION> *)temp_treeblock;
 
     memcpy((void *)(&(temp_treeblock->primary_key_list)), (void *)(&temp_primary_key_list), sizeof(disk_std_vector<bits::compact_ptr>));
 

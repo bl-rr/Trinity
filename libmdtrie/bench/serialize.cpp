@@ -22,7 +22,7 @@ int main()
 {
     dimension_t num_dimensions = 9;
     max_tree_node = 1024;
-    int total_count = 1000;
+    int total_count = 100000;
     trie_depth = 1;
     max_depth = 32;
     no_dynamic_sizing = true;
@@ -69,38 +69,7 @@ int main()
     }
     std::cout << "Insertion Latency per point: " << (float)cumulative / total_count << " us" << std::endl;
 
-    // create a file for serialization
-    FILE *s_file = fopen("trie.bin", "wb");
+    serialize_to_file("trie.bin", &mdtrie, &primary_key_to_treeblock_mapping);
 
-    // check if file is created successfully
-    if (!s_file)
-    {
-        std::cerr << "Error: Unable to create file for serialization."
-                  << std::endl;
-        return 1;
-    }
-
-    // save space to store offset of the compactptrvector, use a dummy value for now
-    size_t offset = 0;
-    fwrite(&offset, sizeof(size_t), 1, s_file);
-    current_offset += sizeof(size_t);
-
-    mdtrie.serialize(s_file);
-
-    // at this point, we know the location of the compactptrvector in the file
-    // offset = ftell(s_file);
-    assert(current_offset == ftell(s_file));
-    // go back to the beginning of the file and write the offset
-    fseek(s_file, 0, SEEK_SET);
-    fwrite(&current_offset, sizeof(size_t), 1, s_file);
-    // go back to the end of the file
-    fseek(s_file, 0, SEEK_END);
-
-    uint64_t ptr_addr = (uint64_t)(primary_key_to_treeblock_mapping.At(0));
-    std::cout << (pointers_to_offsets_map.at(ptr_addr)) << std::endl;
-
-    primary_key_to_treeblock_mapping.serialize(s_file);
-
-    fclose(s_file);
     return 0;
 }

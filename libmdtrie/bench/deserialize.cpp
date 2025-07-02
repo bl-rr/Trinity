@@ -24,7 +24,7 @@ int main()
     /* ---------- Settings ------------ */
     dimension_t num_dimensions = 9;
     max_tree_node = 1024;
-    int total_count = 1000;
+    int total_count = 100000;
     trie_depth = 1;
     max_depth = 32;
 
@@ -42,39 +42,14 @@ int main()
     /* ----------- INSERT via deserialization ----------- */
     TimeStamp start = 0, cumulative = 0;
 
-    int fd;
-    if ((fd = open("/home/wuyue/Desktop/lbh/gpu-mdtrie/disk-trinity/libmdtrie/build/trie.bin", O_RDWR)) == -1)
-    {
-        perror("open");
-        return 1;
-    }
+    disk_md_trie<9> *disk_mdtrie;                                         // pointer to trie
+    disk_bitmap::disk_CompactPtrVector *primary_key_to_treeblock_mapping; // pointer to array
+    uint64_t base;                                                        // needed for operation
+    void *file_start;                                                     // needed for madvise
+    size_t file_size;
 
-    struct stat sb;
-    if (fstat(fd, &sb) == -1)
-    {
-        perror("fstat");
-        return 1;
-    }
-    size_t filesize = sb.st_size;
-
-    void *file_start = mmap(
-        nullptr, filesize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-
-    madvise(file_start, filesize, MADV_RANDOM);
-    if (file_start == MAP_FAILED)
-    {
-        perror("mmap");
-        close(fd);
-        return 1;
-    };
-
-    uint64_t cpv_offset = *((size_t *)file_start);
-
-    disk_md_trie<9> *disk_mdtrie = (disk_md_trie<9> *)((uint64_t)file_start + sizeof(size_t));
-    disk_bitmap::disk_CompactPtrVector *primary_key_to_treeblock_mapping =
-        (disk_bitmap::disk_CompactPtrVector *)((uint64_t)file_start + cpv_offset);
-
-    uint64_t base = (uint64_t)(file_start);
+    deserialize_from_file("/home/wuyue/Desktop/lbh/gpu-mdtrie/disk-trinity/libmdtrie/build/trie.bin", &disk_mdtrie,
+                          &primary_key_to_treeblock_mapping, &base, &file_start, &file_size);
 
     /* ---------- LOOKUP ------------ */
     cumulative = 0;
@@ -87,7 +62,7 @@ int main()
             std::cout << "Looking up: " << num_lookup << " out of " << total_count << std::endl;
         }
 
-        madvise(file_start, filesize, MADV_DONTNEED);
+        // madvise(file_start, file_size, MADV_DONTNEED);
 
         start = GetTimestamp();
         data_point<9> *pt = disk_mdtrie
@@ -127,7 +102,7 @@ int main()
             end_range.set_coordinate(i, (int)(1 << 16));
         }
 
-        madvise(file_start, filesize, MADV_DONTNEED);
+        // madvise(file_start, file_size, MADV_DONTNEED);
         start = GetTimestamp();
         disk_mdtrie->disk_range_search_trie(&start_range, &end_range, disk_mdtrie->root(base), 0, found_points, base);
         // Coordinates are flattened into one vector.

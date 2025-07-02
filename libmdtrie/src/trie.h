@@ -243,6 +243,8 @@ public:
     if (level == trie_depth_)
     {
 
+      assert(current_trie_node);
+
       auto *current_treeblock =
           (tree_block<DIMENSION> *)current_trie_node->get_block();
       current_treeblock->range_search_treeblock(start_range,

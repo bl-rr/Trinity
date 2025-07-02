@@ -125,10 +125,16 @@ public:
     //      2) internal -> list of trie_node<DIMENSION> *
     if (level == trie_depth_)
     {
+      std::cout << "level: " << (int)level << ", trie_depth_: " << (int)trie_depth_
+                << std::endl;
       // at this point, the trie_node is probably at the end of the
       // insertion queue, meaning it can be inserted right away
       assert((current_offset - sizeof(trie_node<DIMENSION>)) ==
              node_offset);
+
+      std::cout << "leaf: " << (uint64_t)node_offset << std::endl;
+      std::cout << "this->get_block(): " << (uint64_t)this->get_block()
+                << std::endl;
 
       // this is a leaf node and should have a tree_block that needs
       // serializing
@@ -141,6 +147,7 @@ public:
       // we need to create the block on file, and
       // `current_offset` is the next writing position
       temp_node->trie_or_treeblock_ptr_ = (void *)current_offset;
+      std::cout << "current_offset: " << current_offset << std::endl;
 
       // node has all the necessary info, write the node at the
       // position `node_offset`
@@ -168,6 +175,12 @@ public:
     }
     else
     {
+
+      std::cout << "non-level: " << (int)level << ", trie_depth_: " << (int)trie_depth_
+                << std::endl;
+
+      std::cout << "non-leaf:" << (uint64_t)node_offset << std::endl;
+
       // this is not a leafnode, but a list of
       //      trie_node<DIMENSION> *
       // of size

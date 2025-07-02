@@ -84,6 +84,8 @@ public:
     if (level == trie_depth_)
     {
 
+      assert((uint64_t)current_trie_node - base);
+
       disk_tree_block<DIMENSION> *current_treeblock =
           (disk_tree_block<DIMENSION> *)current_trie_node->get_block(base);
       current_treeblock->range_search_treeblock(start_range,
@@ -118,7 +120,7 @@ public:
         continue;
       }
 
-      if (!current_trie_node->get_child(current_symbol, base))
+      if (!((uint64_t)(current_trie_node->get_child(current_symbol, base)) - base))
       {
         continue;
       }
