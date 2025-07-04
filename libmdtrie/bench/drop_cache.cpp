@@ -116,13 +116,13 @@ int main()
 
     // 4× LLC, but never less than 256 MiB
     size_t buf_size = std::max(llc * 4, static_cast<size_t>(256ULL * 1024 * 1024));
-    std::cout << "Detected LLC ≈ " << (llc / (1024 * 1024)) << " MiB — "
-              << "thrashing " << (buf_size / (1024 * 1024)) << " MiB buffer …\n";
+    // std::cout << "Detected LLC ≈ " << (llc / (1024 * 1024)) << " MiB — "
+    //           << "thrashing " << (buf_size / (1024 * 1024)) << " MiB buffer …\n";
 
     thrash_cpu_cache(buf_size);
-    std::cout << "✅ CPU cache polluted.\n";
+    // std::cout << "✅ CPU cache polluted.\n";
 
     drop_page_cache();
-    std::cout << "✅ Linux page/dentry/inode cache dropped.\n";
+    // std::cout << "✅ Linux page/dentry/inode cache dropped.\n";
     return 0;
 }

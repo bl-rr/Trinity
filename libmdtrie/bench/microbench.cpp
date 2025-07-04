@@ -83,6 +83,43 @@ void github_disk_query(void)
                                get_query_github<GITHUB_DIMENSION>);
 }
 
+void github_disk_query_cold(void)
+{
+
+  use_github_setting(GITHUB_DIMENSION, micro_github_size);
+
+  string full_path = GITHUB_SERIALIZE_ADDR + "trie.bin";
+  const char *filename = full_path.c_str();
+
+  disk_MdTrieBench<GITHUB_DIMENSION>
+      disk_bench(nullptr, nullptr, 0);
+  std::string folder_name = "microbenchmark-disk-cold/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  disk_bench.disk_range_search_cold(GITHUB_QUERY_ADDR,
+                                    folder_name + "github_query" + identification_string,
+                                    get_query_github<GITHUB_DIMENSION>, filename);
+}
+
+void github_disk_lookup_cold(void)
+{
+
+  use_github_setting(GITHUB_DIMENSION, micro_github_size);
+  string full_path = GITHUB_SERIALIZE_ADDR + "trie.bin";
+  const char *filename = full_path.c_str();
+
+  disk_MdTrieBench<GITHUB_DIMENSION>
+      disk_bench(nullptr, nullptr, 0);
+  std::string folder_name = "microbenchmark-disk-cold/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  disk_bench.disk_lookup_cold(folder_name + "github_lookup" + identification_string, filename);
+}
+
 void github_disk_lookup(void)
 {
 
@@ -272,6 +309,44 @@ void nyc_disk_lookup(void)
   disk_bench.disk_lookup(folder_name + "nyc_lookup" + identification_string);
 }
 
+void nyc_disk_query_cold(void)
+{
+
+  use_nyc_setting(NYC_DIMENSION, micro_nyc_size);
+
+  string full_path = NYC_SERIALIZE_ADDR + "trie.bin";
+  const char *filename = full_path.c_str();
+
+  disk_MdTrieBench<NYC_DIMENSION>
+      disk_bench(nullptr, nullptr, 0);
+  std::string folder_name = "microbenchmark-disk-cold/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  disk_bench.disk_range_search_cold(NYC_QUERY_ADDR,
+                                    folder_name + "nyc_query" + identification_string,
+                                    get_query_nyc<NYC_DIMENSION>, filename);
+}
+
+void nyc_disk_lookup_cold(void)
+{
+
+  use_nyc_setting(NYC_DIMENSION, micro_nyc_size);
+
+  string full_path = NYC_SERIALIZE_ADDR + "trie.bin";
+  const char *filename = full_path.c_str();
+
+  disk_MdTrieBench<NYC_DIMENSION>
+      disk_bench(nullptr, nullptr, 0);
+  std::string folder_name = "microbenchmark-disk-cold/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  disk_bench.disk_lookup_cold(folder_name + "nyc_lookup" + identification_string, filename);
+}
+
 void nyc_bench_deserialize_npc(void) // no-page-cache
 {
 
@@ -444,6 +519,44 @@ void tpch_bench_deserialize_npc(void)
   disk_bench.disk_range_search_npc(TPCH_QUERY_ADDR,
                                    folder_name + "tpch_query" + identification_string,
                                    get_query_tpch<TPCH_DIMENSION>, file_start, file_size);
+}
+
+void tpch_disk_query_cold(void)
+{
+
+  use_tpch_setting(TPCH_DIMENSION, micro_tpch_size);
+
+  string full_path = TPCH_SERIALIZE_ADDR + "trie.bin";
+  const char *filename = full_path.c_str();
+
+  disk_MdTrieBench<TPCH_DIMENSION>
+      disk_bench(nullptr, nullptr, 0);
+  std::string folder_name = "microbenchmark-disk-cold/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  disk_bench.disk_range_search_cold(TPCH_QUERY_ADDR,
+                                    folder_name + "tpch_query" + identification_string,
+                                    get_query_tpch<TPCH_DIMENSION>, filename);
+}
+
+void tpch_disk_lookup_cold(void)
+{
+
+  use_tpch_setting(TPCH_DIMENSION, micro_tpch_size);
+
+  string full_path = TPCH_SERIALIZE_ADDR + "trie.bin";
+  const char *filename = full_path.c_str();
+
+  disk_MdTrieBench<TPCH_DIMENSION>
+      disk_bench(nullptr, nullptr, 0);
+  std::string folder_name = "microbenchmark-disk-cold/";
+  if (identification_string != "")
+  {
+    folder_name = "optimization/";
+  }
+  disk_bench.disk_lookup_cold(folder_name + "tpch_lookup" + identification_string, filename);
 }
 
 void sensitivity_num_dimensions_9(void)
@@ -714,6 +827,19 @@ int main(int argc, char *argv[])
     tpch_disk_lookup();
   else if (argvalue == "nyc-disk-lookup")
     nyc_disk_lookup();
+
+  else if (argvalue == "github-disk-query-cold")
+    github_disk_query_cold();
+  else if (argvalue == "tpch-disk-query-cold")
+    tpch_disk_query_cold();
+  else if (argvalue == "nyc-disk-query-cold")
+    nyc_disk_query_cold();
+  else if (argvalue == "github-disk-lookup-cold")
+    github_disk_lookup_cold();
+  else if (argvalue == "tpch-disk-lookup-cold")
+    tpch_disk_lookup_cold();
+  else if (argvalue == "nyc-disk-lookup-cold")
+    nyc_disk_lookup_cold();
 
   else if (argvalue == "sensitivity_num_dimensions")
   {

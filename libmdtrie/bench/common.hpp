@@ -545,4 +545,46 @@ void deserialize_from_file(const char *filename,
   *base = (uint64_t)(*file_start);
 }
 
+template <dimension_t DIMENSION>
+int deserialize_from_file_cold(const char *filename,
+                               disk_md_trie<DIMENSION> **disk_mdtrie,
+                               disk_bitmap::disk_CompactPtrVector **primary_key_to_treeblock_mapping,
+                               uint64_t *base, void **file_start, size_t *file_size)
+{
+  int fd;
+  if ((fd = open(filename, O_RDONLY)) == -1)
+  {
+    perror("open");
+    exit(1);
+  }
+
+  struct stat sb;
+  if (fstat(fd, &sb) == -1)
+  {
+    perror("fstat");
+    exit(1);
+  }
+  *file_size = sb.st_size;
+
+  *file_start = mmap(
+      nullptr, *file_size, PROT_READ, MAP_SHARED, fd, 0);
+
+  if (*file_start == MAP_FAILED)
+  {
+    perror("mmap");
+    close(fd);
+    exit(1);
+  };
+
+  uint64_t cpv_offset = *((size_t *)(*file_start));
+
+  *disk_mdtrie = (disk_md_trie<DIMENSION> *)((uint64_t)(*file_start) + sizeof(size_t));
+  *primary_key_to_treeblock_mapping =
+      (disk_bitmap::disk_CompactPtrVector *)((uint64_t)(*file_start) + cpv_offset);
+
+  *base = (uint64_t)(*file_start);
+
+  return fd;
+}
+
 #endif // TrinityCommon_H
