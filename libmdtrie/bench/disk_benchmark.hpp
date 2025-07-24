@@ -46,6 +46,14 @@ public:
                 std::to_string((float)cumulative / points_to_lookup) + "\n");
   }
 
+  void disk_lookup_warmup()
+  {
+    for (point_t i = 0; i < points_to_lookup; i++)
+    {
+      disk_mdtrie_->disk_lookup_trie(i, disk_p_key_to_treeblock_compact_, base_);
+    }
+  }
+
   void disk_lookup_cold(std::string outfile_name, const char *filename)
   {
 
